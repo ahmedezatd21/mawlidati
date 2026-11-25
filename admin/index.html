@@ -1,1 +1,160 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مولدتي - لوحة الإدارة</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:Arial;background:#f4f7f8;margin:0;padding:20px;color:#183b36}
+.container{max-width:650px;margin:25px auto}
+.card{background:white;padding:20px;margin-bottom:18px;border-radius:14px;box-shadow:0 3px 14px #0001}
+h2{color:#008b72}
+input,button{width:100%;padding:13px;margin:7px 0;border-radius:8px;font-size:16px}
+input{border:1px solid #ccc}
+button{border:0;background:#008b72;color:white;cursor:pointer}
+.stop{background:#b83232}
+.owner{border:1px solid #e1e8e6;padding:14px;border-radius:10px;margin-top:12px}
+.hidden{display:none}
+#message{color:#b83232}
+</style>
+</head>
+<body>
+<div class="container">
 
+<div class="card">
+<h2>مولدتي | لوحة الإدارة</h2>
+<p>إدارة اشتراكات أصحاب المولدات</p>
+</div>
+
+<div class="card" id="loginBox">
+<h2>دخول المدير</h2>
+<input id="email" type="email" placeholder="البريد الإلكتروني">
+<input id="password" type="password" placeholder="كلمة المرور">
+<button onclick="login()">تسجيل الدخول</button>
+<p id="message"></p>
+</div>
+
+<div id="dashboard" class="hidden">
+<div class="card">
+<h2>إضافة صاحب مولدة</h2>
+<input id="ownerName" placeholder="اسم صاحب المولدة">
+<input id="ownerPhone" placeholder="رقم الهاتف">
+<label>تاريخ انتهاء الاشتراك</label>
+<input id="expiryDate" type="date">
+<button onclick="addOwner()">إضافة صاحب مولدة</button>
+</div>
+
+<div class="card">
+<h2>أصحاب المولدات</h2>
+<div id="ownersList">جاري تحميل البيانات...</div>
+<button class="stop" onclick="logout()">تسجيل الخروج</button>
+</div>
+</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+apiKey: "YOUR_API_KEY",
+authDomain: "YOUR_AUTH_DOMAIN",
+databaseURL: "YOUR_DATABASE_URL",
+projectId: "mawlidati-admin",
+appId: "YOUR_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+
+function login(){
+const email=document.getElementById("email").value.trim();
+const password=document.getElementById("password").value;
+auth.signInWithEmailAndPassword(email,password)
+.catch(error=>{
+document.getElementById("message").textContent=error.message;
+});
+}
+
+auth.onAuthStateChanged(user=>{
+if(user){
+document.getElementById("loginBox").classList.add("hidden");
+document.getElementById("dashboard").classList.remove("hidden");
+loadOwners();
+}else{
+document.getElementById("loginBox").classList.remove("hidden");
+document.getElementById("dashboard").classList.add("hidden");
+}
+});
+
+function loadOwners(){
+db.ref("generator_owners").on("value",snapshot=>{
+const list=document.getElementById("ownersList");
+list.innerHTML="";
+if(!snapshot.exists()){
+list.textContent="لا يوجد أصحاب مولدات حالياً";
+return;
+}
+snapshot.forEach(child=>{
+const owner=child.val()||{};
+const id=child.key;
+const div=document.createElement("div");
+div.className="owner";
+const title=document.createElement("h3");
+title.textContent=owner.name||"بدون اسم";
+const phone=document.createElement("p");
+phone.textContent="الهاتف: "+(owner.phone||"-");
+const status=document.createElement("p");
+status.textContent="الحالة: "+(owner.subscription_status||"غير محدد");
+const expiry=document.createElement("p");
+expiry.textContent="الانتهاء: "+(owner.expiry_date||"-");
+const button=document.createElement("button");
+button.textContent=owner.subscription_status==="active"?"إيقاف الاشتراك":"تفعيل الاشتراك";
+button.className=owner.subscription_status==="active"?"stop":"";
+button.onclick=()=>toggleStatus(id,owner.subscription_status);
+div.append(title,phone,status,expiry,button);
+list.appendChild(div);
+});
+});
+}
+
+function addOwner(){
+const name=document.getElementById("ownerName").value.trim();
+const phone=document.getElementById("ownerPhone").value.trim();
+const expiry=document.getElementById("expiryDate").value;
+if(!name||!phone||!expiry){
+alert("يرجى إدخال جميع البيانات");
+return;
+}
+const id=db.ref("generator_owners").push().key;
+db.ref("generator_owners/"+id).set({
+name:name,
+phone:phone,
+subscription_status:"active",
+start_date:new Date().toISOString().slice(0,10),
+expiry_date:expiry,
+grace_days:7
+}).then(()=>{
+alert("تمت إضافة صاحب المولدة");
+document.getElementById("ownerName").value="";
+document.getElementById("ownerPhone").value="";
+document.getElementById("expiryDate").value="";
+}).catch(error=>alert(error.message));
+}
+
+function toggleStatus(id,currentStatus){
+const newStatus=currentStatus==="active"?"suspended":"active";
+db.ref("generator_owners/"+id+"/subscription_status")
+.set(newStatus)
+.catch(error=>alert(error.message));
+}
+
+function logout(){
+auth.signOut();
+}
+</script>
+</body>
+</html>
