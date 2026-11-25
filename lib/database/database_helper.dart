@@ -1,5 +1,4 @@
 
-
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -23,11 +22,18 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: _createDB,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            'ALTER TABLE generators ADD COLUMN amp_price REAL DEFAULT 0',
+          );
+        }
+      },
     );
   }
 
@@ -38,6 +44,7 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         location TEXT,
         capacity TEXT,
+        amp_price REAL DEFAULT 0,
         notes TEXT,
         created_at TEXT NOT NULL
       )
@@ -87,17 +94,24 @@ class DatabaseHelper {
     ''');
   }
 
+  // =========================
   // المولدات
+  // =========================
 
   Future<int> insertGenerator(Map<String, dynamic> data) async {
     final db = await database;
     data['created_at'] ??= DateTime.now().toIso8601String();
+
     return await db.insert('generators', data);
   }
 
   Future<List<Map<String, dynamic>>> getGenerators() async {
     final db = await database;
-    return await db.query('generators', orderBy: 'id DESC');
+
+    return await db.query(
+      'generators',
+      orderBy: 'id DESC',
+    );
   }
 
   Future<int> updateGenerator(
@@ -105,6 +119,7 @@ class DatabaseHelper {
     Map<String, dynamic> data,
   ) async {
     final db = await database;
+
     return await db.update(
       'generators',
       data,
@@ -115,6 +130,7 @@ class DatabaseHelper {
 
   Future<int> deleteGenerator(int id) async {
     final db = await database;
+
     return await db.delete(
       'generators',
       where: 'id = ?',
@@ -122,17 +138,24 @@ class DatabaseHelper {
     );
   }
 
+  // =========================
   // المشتركون
+  // =========================
 
   Future<int> insertSubscriber(Map<String, dynamic> data) async {
     final db = await database;
     data['created_at'] ??= DateTime.now().toIso8601String();
+
     return await db.insert('subscribers', data);
   }
 
   Future<List<Map<String, dynamic>>> getSubscribers() async {
     final db = await database;
-    return await db.query('subscribers', orderBy: 'id DESC');
+
+    return await db.query(
+      'subscribers',
+      orderBy: 'id DESC',
+    );
   }
 
   Future<int> updateSubscriber(
@@ -140,6 +163,7 @@ class DatabaseHelper {
     Map<String, dynamic> data,
   ) async {
     final db = await database;
+
     return await db.update(
       'subscribers',
       data,
@@ -150,6 +174,7 @@ class DatabaseHelper {
 
   Future<int> deleteSubscriber(int id) async {
     final db = await database;
+
     return await db.delete(
       'subscribers',
       where: 'id = ?',
@@ -157,17 +182,24 @@ class DatabaseHelper {
     );
   }
 
+  // =========================
   // الفواتير
+  // =========================
 
   Future<int> insertInvoice(Map<String, dynamic> data) async {
     final db = await database;
     data['created_at'] ??= DateTime.now().toIso8601String();
+
     return await db.insert('invoices', data);
   }
 
   Future<List<Map<String, dynamic>>> getInvoices() async {
     final db = await database;
-    return await db.query('invoices', orderBy: 'id DESC');
+
+    return await db.query(
+      'invoices',
+      orderBy: 'id DESC',
+    );
   }
 
   Future<int> updateInvoice(
@@ -175,6 +207,7 @@ class DatabaseHelper {
     Map<String, dynamic> data,
   ) async {
     final db = await database;
+
     return await db.update(
       'invoices',
       data,
@@ -185,6 +218,7 @@ class DatabaseHelper {
 
   Future<int> deleteInvoice(int id) async {
     final db = await database;
+
     return await db.delete(
       'invoices',
       where: 'id = ?',
@@ -192,10 +226,13 @@ class DatabaseHelper {
     );
   }
 
+  // =========================
   // المصاريف
+  // =========================
 
   Future<int> insertExpense(Map<String, dynamic> data) async {
     final db = await database;
+
     data['created_at'] ??= DateTime.now().toIso8601String();
     data['date'] ??= DateTime.now().toIso8601String();
 
@@ -204,7 +241,11 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getExpenses() async {
     final db = await database;
-    return await db.query('expenses', orderBy: 'id DESC');
+
+    return await db.query(
+      'expenses',
+      orderBy: 'id DESC',
+    );
   }
 
   Future<int> updateExpense(
@@ -212,6 +253,7 @@ class DatabaseHelper {
     Map<String, dynamic> data,
   ) async {
     final db = await database;
+
     return await db.update(
       'expenses',
       data,
@@ -222,6 +264,7 @@ class DatabaseHelper {
 
   Future<int> deleteExpense(int id) async {
     final db = await database;
+
     return await db.delete(
       'expenses',
       where: 'id = ?',
