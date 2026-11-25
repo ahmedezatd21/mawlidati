@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'screens/login_page.dart';
 import 'screens/subscribers_page.dart';
+import 'screens/generators_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -187,6 +188,19 @@ class DashboardPage extends StatelessWidget {
               ),
 
               const SizedBox(height: 12),
+
+              ServiceTile(
+                title: 'إدارة المولدات',
+                icon: Icons.electric_bolt,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const GeneratorsPage(),
+                    ),
+                  );
+                },
+              ),
 
               ServiceTile(
                 title: 'إدارة المشتركين',
