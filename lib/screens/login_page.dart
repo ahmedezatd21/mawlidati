@@ -1,5 +1,4 @@
 
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -20,11 +19,13 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> login() async {
     if (emailController.text.trim().isEmpty ||
         passwordController.text.isEmpty) {
-      showMessage('يرجى إدخال البريد وكلمة المرور');
+      showMessage('يرجى إدخال البريد الإلكتروني وكلمة المرور');
       return;
     }
 
-    setState(() => loading = true);
+    setState(() {
+      loading = true;
+    });
 
     try {
       await Supabase.instance.client.auth.signInWithPassword(
@@ -32,23 +33,30 @@ class _LoginPageState extends State<LoginPage> {
         password: passwordController.text,
       );
 
-      if (mounted) {
-        Navigator.pop(context);
-      }
+      // لا نستخدم Navigator.pop هنا.
+      // AuthGate في main.dart ينقل المستخدم تلقائياً للوحة التحكم.
+
     } on AuthException catch (e) {
       showMessage(e.message);
-    } catch (_) {
-      showMessage('حدث خطأ، حاول مرة أخرى');
+    } catch (e) {
+      showMessage('حدث خطأ أثناء تسجيل الدخول');
     } finally {
       if (mounted) {
-        setState(() => loading = false);
+        setState(() {
+          loading = false;
+        });
       }
     }
   }
 
   void showMessage(String message) {
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade700,
+      ),
     );
   }
 
@@ -70,39 +78,61 @@ class _LoginPageState extends State<LoginPage> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.electric_bolt,
-                    size: 75,
-                    color: Color(0xFF008B72),
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF063B35),
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                    child: const Icon(
+                      Icons.electric_bolt,
+                      size: 60,
+                      color: Colors.white,
+                    ),
                   ),
-                  const SizedBox(height: 15),
+
+                  const SizedBox(height: 20),
+
                   const Text(
                     'مولدتي',
                     style: TextStyle(
-                      fontSize: 32,
+                      fontSize: 34,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF063B35),
                     ),
                   ),
+
                   const SizedBox(height: 8),
+
                   const Text(
                     'إدارة مولدتك بكل سهولة',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey,
+                    ),
                   ),
+
                   const SizedBox(height: 40),
+
                   TextField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       labelText: 'البريد الإلكتروني',
                       prefixIcon: const Icon(Icons.email_outlined),
+                      filled: true,
+                      fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 18),
+
                   TextField(
                     controller: passwordController,
                     obscureText: obscurePassword,
@@ -121,12 +151,16 @@ class _LoginPageState extends State<LoginPage> {
                               : Icons.visibility_off,
                         ),
                       ),
+                      filled: true,
+                      fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 25),
+
+                  const SizedBox(height: 28),
+
                   SizedBox(
                     width: double.infinity,
                     height: 55,
@@ -145,8 +179,22 @@ class _LoginPageState extends State<LoginPage> {
                             )
                           : const Text(
                               'تسجيل الدخول',
-                              style: TextStyle(fontSize: 17),
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    'مولدتي - نظام إدارة المولدات الكهربائية',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
                     ),
                   ),
                 ],
