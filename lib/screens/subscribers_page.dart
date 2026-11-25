@@ -1,6 +1,6 @@
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../database/database_helper.dart';
 
 class SubscribersPage extends StatefulWidget {
   const SubscribersPage({super.key});
@@ -10,7 +10,7 @@ class SubscribersPage extends StatefulWidget {
 }
 
 class _SubscribersPageState extends State<SubscribersPage> {
-  final db = Supabase.instance.client;
+  final db = DatabaseHelper.instance;
 
   final name = TextEditingController();
   final phone = TextEditingController();
@@ -22,7 +22,8 @@ class _SubscribersPageState extends State<SubscribersPage> {
   List<Map<String, dynamic>> generators = [];
   List<Map<String, dynamic>> subscribers = [];
 
-  String? selectedGeneratorId;
+  int? selectedGeneratorId;
+
   bool loading = true;
   bool saving = false;
 
@@ -34,20 +35,22 @@ class _SubscribersPageState extends State<SubscribersPage> {
 
   Future<void> loadGenerators() async {
     try {
-      final data = await db
-          .from('generators')
-          .select('id, name, amp_price')
-          .order('created_at', ascending: false);
+      final data = await db.getGenerators();
 
       if (!mounted) return;
 
-      generators = List<Map<String, dynamic>>.from(data);
+      setState(() {
+        generators = data;
 
-      if (generators.isNotEmpty) {
-        selectedGeneratorId = generators.first['id'].toString();
+        if (generators.isNotEmpty) {
+          selectedGeneratorId = generators.first['id'] as int;
+        }
+
+        loading = false;
+      });
+
+      if (selectedGeneratorId != null) {
         await loadData();
-      } else {
-        setState(() => loading = false);
       }
     } catch (e) {
       if (!mounted) return;
@@ -62,16 +65,15 @@ class _SubscribersPageState extends State<SubscribersPage> {
     setState(() => loading = true);
 
     try {
-      final data = await db
-          .from('subscribers')
-          .select()
-          .eq('generator_id', selectedGeneratorId!)
-          .order('created_at', ascending: false);
+      final data = await db.getSubscribers();
 
       if (!mounted) return;
 
       setState(() {
-        subscribers = List<Map<String, dynamic>>.from(data);
+        subscribers = data.where((s) {
+          return s['generator_id'] == selectedGeneratorId;
+        }).toList();
+
         loading = false;
       });
     } catch (e) {
@@ -82,19 +84,27 @@ class _SubscribersPageState extends State<SubscribersPage> {
   }
 
   void message(String text) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(text)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text)),
+    );
   }
 
-  Future<void> addSubscriber() async {
+  Future<void> saveSubscriber({
+    int? id,
+    required BuildContext sheetContext,
+  }) async {
     if (saving) return;
 
-    final a = int.tryParse(amperes.text.trim());
+    final subscriberName = name.text.trim();
+    final subscriberPhone = phone.text.trim();
+    final subscriberAddress = address.text.trim();
+
+    final a = double.tryParse(amperes.text.trim());
     final p = double.tryParse(price.text.trim());
 
     if (selectedGeneratorId == null ||
-        name.text.trim().isEmpty ||
-        address.text.trim().isEmpty ||
+        subscriberName.isEmpty ||
+        subscriberAddress.isEmpty ||
         a == null ||
         a <= 0 ||
         p == null ||
@@ -106,14 +116,26 @@ class _SubscribersPageState extends State<SubscribersPage> {
     setState(() => saving = true);
 
     try {
-      await db.from('subscribers').insert({
+      final monthlyFee = a * p;
+
+      final data = {
         'generator_id': selectedGeneratorId,
-        'name': name.text.trim(),
-        'phone': phone.text.trim(),
-        'address': address.text.trim(),
-        'amps': a,
-        'price_per_ampere': p,
-      });
+        'name': subscriberName,
+        'phone': subscriberPhone,
+        'ampere': a,
+        'monthly_fee': monthlyFee,
+        'notes': subscriberAddress,
+      };
+
+      if (id == null) {
+        await db.insertSubscriber(data);
+      } else {
+        await db.updateSubscriber(id, data);
+      }
+
+      if (!mounted) return;
+
+      Navigator.pop(sheetContext);
 
       name.clear();
       phone.clear();
@@ -121,13 +143,15 @@ class _SubscribersPageState extends State<SubscribersPage> {
       amperes.clear();
       price.clear();
 
-      if (!mounted) return;
-
-      Navigator.pop(context);
       await loadData();
-      message('تمت إضافة المشترك بنجاح');
+
+      message(
+        id == null
+            ? 'تمت إضافة المشترك بنجاح'
+            : 'تم تعديل بيانات المشترك بنجاح',
+      );
     } catch (e) {
-      message('تعذرت الإضافة: $e');
+      message('حدث خطأ أثناء الحفظ: $e');
     } finally {
       if (mounted) {
         setState(() => saving = false);
@@ -135,59 +159,115 @@ class _SubscribersPageState extends State<SubscribersPage> {
     }
   }
 
-  void showAddForm() {
+  void showSubscriberForm({Map<String, dynamic>? subscriber}) {
+    final isEditing = subscriber != null;
+
+    name.text = isEditing
+        ? subscriber['name']?.toString() ?? ''
+        : '';
+
+    phone.text = isEditing
+        ? subscriber['phone']?.toString() ?? ''
+        : '';
+
+    address.text = isEditing
+        ? subscriber['notes']?.toString() ?? ''
+        : '';
+
+    amperes.text = isEditing
+        ? subscriber['ampere']?.toString() ?? ''
+        : '';
+
+    if (isEditing) {
+      final amp = double.tryParse(amperes.text) ?? 0;
+      final fee =
+          double.tryParse(subscriber['monthly_fee'].toString()) ?? 0;
+
+      price.text = amp > 0 ? (fee / amp).toString() : '0';
+    } else {
+      price.clear();
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Directionality(
+      builder: (sheetContext) => Directionality(
         textDirection: TextDirection.rtl,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            20,
-            20,
-            MediaQuery.of(ctx).viewInsets.bottom + 20,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'إضافة مشترك جديد',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 15),
-                field(name, 'اسم المشترك'),
-                field(phone, 'رقم الهاتف'),
-                field(address, 'العنوان'),
-                field(
-                  amperes,
-                  'عدد الأمبير',
-                  keyboard: TextInputType.number,
-                ),
-                field(
-                  price,
-                  'سعر الأمبير بالدينار',
-                  keyboard: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                ),
-                const SizedBox(height: 15),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: saving ? null : addSubscriber,
-                    child: Text(
-                      saving ? 'جارٍ الحفظ...' : 'حفظ المشترك',
+        child: StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                20,
+                20,
+                MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      isEditing
+                          ? 'تعديل بيانات المشترك'
+                          : 'إضافة مشترك جديد',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
+
+                    const SizedBox(height: 15),
+
+                    field(name, 'اسم المشترك'),
+                    field(phone, 'رقم الهاتف'),
+                    field(address, 'العنوان'),
+
+                    field(
+                      amperes,
+                      'عدد الأمبير',
+                      keyboard: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                    ),
+
+                    field(
+                      price,
+                      'سعر الأمبير بالدينار',
+                      keyboard: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                    ),
+
+                    const SizedBox(height: 15),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: saving
+                            ? null
+                            : () async {
+                                setSheetState(() {});
+                                await saveSubscriber(
+                                  id: isEditing
+                                      ? subscriber['id'] as int
+                                      : null,
+                                  sheetContext: sheetContext,
+                                );
+
+                                if (sheetContext.mounted) {
+                                  setSheetState(() {});
+                                }
+                              },
+                        child: Text(
+                          saving ? 'جارٍ الحفظ...' : 'حفظ المشترك',
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -211,6 +291,38 @@ class _SubscribersPageState extends State<SubscribersPage> {
     );
   }
 
+  Future<void> deleteSubscriber(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حذف المشترك'),
+        content: const Text(
+          'هل أنت متأكد من حذف هذا المشترك؟',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await db.deleteSubscriber(id);
+      await loadData();
+      message('تم حذف المشترك بنجاح');
+    } catch (e) {
+      message('تعذر حذف المشترك: $e');
+    }
+  }
+
   @override
   void dispose() {
     name.dispose();
@@ -227,7 +339,9 @@ class _SubscribersPageState extends State<SubscribersPage> {
     final filtered = subscribers.where((s) {
       final n = (s['name'] ?? '').toString();
       final p = (s['phone'] ?? '').toString();
-      return n.contains(search.text) || p.contains(search.text);
+
+      return n.contains(search.text) ||
+          p.contains(search.text);
     }).toList();
 
     return Directionality(
@@ -238,26 +352,32 @@ class _SubscribersPageState extends State<SubscribersPage> {
           backgroundColor: const Color(0xFF063B35),
           foregroundColor: Colors.white,
         ),
+
         floatingActionButton: generators.isEmpty
             ? null
             : FloatingActionButton.extended(
-                onPressed: showAddForm,
+                onPressed: () => showSubscriberForm(),
                 backgroundColor: const Color(0xFF063B35),
                 foregroundColor: Colors.white,
                 icon: const Icon(Icons.person_add),
                 label: const Text('إضافة مشترك'),
               ),
+
         body: loading && generators.isEmpty
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
             : generators.isEmpty
                 ? const Center(
-                    child: Text('أضف مولدة أولاً حتى تتمكن من إضافة المشتركين'),
+                    child: Text(
+                      'أضف مولدة أولاً حتى تتمكن من إضافة المشتركين',
+                    ),
                   )
                 : Column(
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(16),
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<int>(
                           value: selectedGeneratorId,
                           isExpanded: true,
                           decoration: const InputDecoration(
@@ -265,23 +385,28 @@ class _SubscribersPageState extends State<SubscribersPage> {
                             border: OutlineInputBorder(),
                           ),
                           items: generators.map((g) {
-                            return DropdownMenuItem<String>(
-                              value: g['id'].toString(),
+                            return DropdownMenuItem<int>(
+                              value: g['id'] as int,
                               child: Text(g['name'].toString()),
                             );
                           }).toList(),
                           onChanged: (value) {
                             if (value == null) return;
+
                             setState(() {
                               selectedGeneratorId = value;
                               search.clear();
                             });
+
                             loadData();
                           },
                         ),
                       ),
+
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
                         child: TextField(
                           controller: search,
                           onChanged: (_) => setState(() {}),
@@ -292,6 +417,7 @@ class _SubscribersPageState extends State<SubscribersPage> {
                           ),
                         ),
                       ),
+
                       Expanded(
                         child: loading
                             ? const Center(
@@ -299,17 +425,40 @@ class _SubscribersPageState extends State<SubscribersPage> {
                               )
                             : filtered.isEmpty
                                 ? const Center(
-                                    child: Text('لا يوجد مشتركون حالياً'),
+                                    child: Text(
+                                      'لا يوجد مشتركون حالياً',
+                                    ),
                                   )
                                 : RefreshIndicator(
                                     onRefresh: loadData,
                                     child: ListView.builder(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 90,
+                                      ),
                                       itemCount: filtered.length,
                                       itemBuilder: (context, index) {
                                         final s = filtered[index];
 
+                                        final ampere =
+                                            double.tryParse(
+                                                  s['ampere'].toString(),
+                                                ) ??
+                                                0;
+
+                                        final monthlyFee =
+                                            double.tryParse(
+                                                  s['monthly_fee'].toString(),
+                                                ) ??
+                                                0;
+
+                                        final pricePerAmpere =
+                                            ampere > 0
+                                                ? monthlyFee / ampere
+                                                : 0;
+
                                         return Card(
-                                          margin: const EdgeInsets.symmetric(
+                                          margin:
+                                              const EdgeInsets.symmetric(
                                             horizontal: 16,
                                             vertical: 6,
                                           ),
@@ -317,16 +466,50 @@ class _SubscribersPageState extends State<SubscribersPage> {
                                             leading: const CircleAvatar(
                                               child: Icon(Icons.person),
                                             ),
+
                                             title: Text(
                                               s['name']?.toString() ?? '',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
+
                                             subtitle: Text(
                                               'الهاتف: ${s['phone'] ?? '-'}\n'
-                                              'الأمبير: ${s['amps'] ?? 0}\n'
-                                              'سعر الأمبير: ${s['price_per_ampere'] ?? 0} د.ع\n'
-                                              'الفاتورة الشهرية: ${s['monthly_fee'] ?? 0} د.ع',
+                                              'العنوان: ${s['notes'] ?? '-'}\n'
+                                              'الأمبير: $ampere\n'
+                                              'سعر الأمبير: ${pricePerAmpere.toStringAsFixed(0)} د.ع\n'
+                                              'الفاتورة الشهرية: ${monthlyFee.toStringAsFixed(0)} د.ع',
                                             ),
+
                                             isThreeLine: true,
+
+                                            trailing:
+                                                PopupMenuButton<String>(
+                                              onSelected: (value) {
+                                                if (value == 'edit') {
+                                                  showSubscriberForm(
+                                                    subscriber: s,
+                                                  );
+                                                } else if (value ==
+                                                    'delete') {
+                                                  deleteSubscriber(
+                                                    s['id'] as int,
+                                                  );
+                                                }
+                                              },
+                                              itemBuilder: (context) =>
+                                                  const [
+                                                PopupMenuItem(
+                                                  value: 'edit',
+                                                  child: Text('تعديل'),
+                                                ),
+                                                PopupMenuItem(
+                                                  value: 'delete',
+                                                  child: Text('حذف'),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         );
                                       },
