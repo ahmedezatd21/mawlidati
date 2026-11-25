@@ -7,7 +7,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
-    url: 'https://tnyrbthjncuveagitlgm.supabase.co/rest/v1/',
+    url: 'https://tnyrbthjncuveagitlgm.supabase.co',
     anonKey: 'sb_publishable_T_1ojE6n87K9kUQi2EAUTQ_SsW0NPBy',
   );
 
@@ -37,6 +37,8 @@ class MawlidatiApp extends StatelessWidget {
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
+
+  const AuthGate._();
 
   @override
   Widget build(BuildContext context) {
@@ -137,36 +139,12 @@ class DashboardPage extends StatelessWidget {
                 mainAxisSpacing: 12,
                 childAspectRatio: 1.25,
                 children: const [
-                  DashboardCard(
-                    title: 'المولدات',
-                    value: '0',
-                    icon: Icons.electric_bolt,
-                  ),
-                  DashboardCard(
-                    title: 'المشتركون',
-                    value: '0',
-                    icon: Icons.people,
-                  ),
-                  DashboardCard(
-                    title: 'الفواتير',
-                    value: '0',
-                    icon: Icons.receipt_long,
-                  ),
-                  DashboardCard(
-                    title: 'الديون',
-                    value: '0 د.ع',
-                    icon: Icons.account_balance_wallet,
-                  ),
-                  DashboardCard(
-                    title: 'المصاريف',
-                    value: '0 د.ع',
-                    icon: Icons.payments,
-                  ),
-                  DashboardCard(
-                    title: 'الأرباح',
-                    value: '0 د.ع',
-                    icon: Icons.trending_up,
-                  ),
+                  DashboardCard(title: 'المولدات', value: '0', icon: Icons.electric_bolt),
+                  DashboardCard(title: 'المشتركون', value: '0', icon: Icons.people),
+                  DashboardCard(title: 'الفواتير', value: '0', icon: Icons.receipt_long),
+                  DashboardCard(title: 'الديون', value: '0 د.ع', icon: Icons.account_balance_wallet),
+                  DashboardCard(title: 'المصاريف', value: '0 د.ع', icon: Icons.payments),
+                  DashboardCard(title: 'الأرباح', value: '0 د.ع', icon: Icons.trending_up),
                 ],
               ),
               const SizedBox(height: 24),
@@ -178,22 +156,10 @@ class DashboardPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              const ServiceTile(
-                title: 'إدارة المشتركين',
-                icon: Icons.people_outline,
-              ),
-              const ServiceTile(
-                title: 'إدارة الفواتير',
-                icon: Icons.receipt_long,
-              ),
-              const ServiceTile(
-                title: 'تسجيل المصاريف',
-                icon: Icons.money,
-              ),
-              const ServiceTile(
-                title: 'تقارير المولدة',
-                icon: Icons.bar_chart,
-              ),
+              const ServiceTile(title: 'إدارة المشتركين', icon: Icons.people_outline),
+              const ServiceTile(title: 'إدارة الفواتير', icon: Icons.receipt_long),
+              const ServiceTile(title: 'تسجيل المصاريف', icon: Icons.money),
+              const ServiceTile(title: 'تقارير المولدة', icon: Icons.bar_chart),
             ],
           ),
         ),
@@ -227,20 +193,8 @@ class DashboardCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Icon(icon, color: const Color(0xFF008B72), size: 29),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.black54,
-              fontSize: 14,
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text(title, style: const TextStyle(color: Colors.black54, fontSize: 14)),
+          Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         ],
       ),
     );
