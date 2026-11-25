@@ -1,13 +1,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'screens/login_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
-    url: 'https://tnyrbthjncuveagitlgm.supabase.co/rest/v1/',
-    anonKey: 'sb_publishable_T_1ojE6n87K9kUQi2EAUTQ_SsW0NPBy',
+    url: 'YOUR_SUPABASE_URL',
+    anonKey: 'YOUR_SUPABASE_ANON_KEY',
   );
 
   runApp(const MawlidatiApp());
@@ -29,13 +30,41 @@ class MawlidatiApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF4F7F8),
         fontFamily: 'Arial',
       ),
-      home: const DashboardPage(),
+      home: const AuthGate(),
+    );
+  }
+}
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<AuthState>(
+      stream: Supabase.instance.client.auth.onAuthStateChange,
+      initialData: AuthState(
+        AuthChangeEvent.initialSession,
+        Supabase.instance.client.auth.currentSession,
+      ),
+      builder: (context, snapshot) {
+        final session = snapshot.data?.session;
+
+        if (session != null) {
+          return const DashboardPage();
+        }
+
+        return const LoginPage();
+      },
     );
   }
 }
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
+
+  Future<void> logout(BuildContext context) async {
+    await Supabase.instance.client.auth.signOut();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,8 +80,9 @@ class DashboardPage extends StatelessWidget {
           ),
           actions: [
             IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.notifications_none),
+              onPressed: () => logout(context),
+              icon: const Icon(Icons.logout),
+              tooltip: 'تسجيل الخروج',
             ),
           ],
         ),
