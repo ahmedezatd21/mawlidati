@@ -1,7 +1,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'screens/login_page.dart';
+import 'screens/subscribers_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,8 +39,6 @@ class MawlidatiApp extends StatelessWidget {
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
-
-  const AuthGate._();
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +122,9 @@ class DashboardPage extends StatelessWidget {
                   ],
                 ),
               ),
+
               const SizedBox(height: 24),
+
               const Text(
                 'لوحة التحكم',
                 style: TextStyle(
@@ -130,7 +132,9 @@ class DashboardPage extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+
               const SizedBox(height: 14),
+
               GridView.count(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -139,15 +143,41 @@ class DashboardPage extends StatelessWidget {
                 mainAxisSpacing: 12,
                 childAspectRatio: 1.25,
                 children: const [
-                  DashboardCard(title: 'المولدات', value: '0', icon: Icons.electric_bolt),
-                  DashboardCard(title: 'المشتركون', value: '0', icon: Icons.people),
-                  DashboardCard(title: 'الفواتير', value: '0', icon: Icons.receipt_long),
-                  DashboardCard(title: 'الديون', value: '0 د.ع', icon: Icons.account_balance_wallet),
-                  DashboardCard(title: 'المصاريف', value: '0 د.ع', icon: Icons.payments),
-                  DashboardCard(title: 'الأرباح', value: '0 د.ع', icon: Icons.trending_up),
+                  DashboardCard(
+                    title: 'المولدات',
+                    value: '0',
+                    icon: Icons.electric_bolt,
+                  ),
+                  DashboardCard(
+                    title: 'المشتركون',
+                    value: '0',
+                    icon: Icons.people,
+                  ),
+                  DashboardCard(
+                    title: 'الفواتير',
+                    value: '0',
+                    icon: Icons.receipt_long,
+                  ),
+                  DashboardCard(
+                    title: 'الديون',
+                    value: '0 د.ع',
+                    icon: Icons.account_balance_wallet,
+                  ),
+                  DashboardCard(
+                    title: 'المصاريف',
+                    value: '0 د.ع',
+                    icon: Icons.payments,
+                  ),
+                  DashboardCard(
+                    title: 'الأرباح',
+                    value: '0 د.ع',
+                    icon: Icons.trending_up,
+                  ),
                 ],
               ),
+
               const SizedBox(height: 24),
+
               const Text(
                 'الخدمات',
                 style: TextStyle(
@@ -155,11 +185,36 @@ class DashboardPage extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+
               const SizedBox(height: 12),
-              const ServiceTile(title: 'إدارة المشتركين', icon: Icons.people_outline),
-              const ServiceTile(title: 'إدارة الفواتير', icon: Icons.receipt_long),
-              const ServiceTile(title: 'تسجيل المصاريف', icon: Icons.money),
-              const ServiceTile(title: 'تقارير المولدة', icon: Icons.bar_chart),
+
+              ServiceTile(
+                title: 'إدارة المشتركين',
+                icon: Icons.people_outline,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SubscribersPage(),
+                    ),
+                  );
+                },
+              ),
+
+              const ServiceTile(
+                title: 'إدارة الفواتير',
+                icon: Icons.receipt_long,
+              ),
+
+              const ServiceTile(
+                title: 'تسجيل المصاريف',
+                icon: Icons.money,
+              ),
+
+              const ServiceTile(
+                title: 'تقارير المولدة',
+                icon: Icons.bar_chart,
+              ),
             ],
           ),
         ),
@@ -192,9 +247,25 @@ class DashboardCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, color: const Color(0xFF008B72), size: 29),
-          Text(title, style: const TextStyle(color: Colors.black54, fontSize: 14)),
-          Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          Icon(
+            icon,
+            color: const Color(0xFF008B72),
+            size: 29,
+          ),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.black54,
+              fontSize: 14,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
@@ -204,11 +275,13 @@ class DashboardCard extends StatelessWidget {
 class ServiceTile extends StatelessWidget {
   final String title;
   final IconData icon;
+  final VoidCallback? onTap;
 
   const ServiceTile({
     super.key,
     required this.title,
     required this.icon,
+    this.onTap,
   });
 
   @override
@@ -216,10 +289,16 @@ class ServiceTile extends StatelessWidget {
     return Card(
       color: Colors.white,
       child: ListTile(
-        leading: Icon(icon, color: const Color(0xFF008B72)),
+        leading: Icon(
+          icon,
+          color: const Color(0xFF008B72),
+        ),
         title: Text(title),
-        trailing: const Icon(Icons.arrow_back_ios, size: 16),
-        onTap: () {},
+        trailing: const Icon(
+          Icons.arrow_back_ios,
+          size: 16,
+        ),
+        onTap: onTap,
       ),
     );
   }
