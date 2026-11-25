@@ -35,20 +35,22 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      await Supabase.instance.client.auth.signInWithPassword(
+      final response = await Supabase.instance.client.auth
+          .signInWithPassword(
         email: email,
         password: password,
       );
 
-      // AuthGate في main.dart يتولى فتح لوحة التحكم تلقائياً.
-
+      if (response.user != null && mounted) {
+        showMessage('تم تسجيل الدخول بنجاح');
+      }
     } on AuthException catch (e) {
       if (mounted) {
-        showMessage(e.message);
+        showMessage('خطأ مصادقة: ${e.message}');
       }
     } catch (e) {
       if (mounted) {
-        showMessage('حدث خطأ أثناء تسجيل الدخول، حاول مرة أخرى');
+        showMessage('خطأ اتصال: $e');
       }
     } finally {
       if (mounted) {
@@ -109,9 +111,7 @@ class _LoginPageState extends State<LoginPage> {
                           color: Color(0xFF008B72),
                         ),
                       ),
-
                       const SizedBox(height: 20),
-
                       const Text(
                         'مولدتي',
                         style: TextStyle(
@@ -120,9 +120,7 @@ class _LoginPageState extends State<LoginPage> {
                           color: Color(0xFF063B35),
                         ),
                       ),
-
                       const SizedBox(height: 8),
-
                       const Text(
                         'إدارة مولدتك أصبحت أسهل',
                         style: TextStyle(
@@ -130,9 +128,7 @@ class _LoginPageState extends State<LoginPage> {
                           color: Colors.grey,
                         ),
                       ),
-
                       const SizedBox(height: 35),
-
                       TextField(
                         controller: emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -152,9 +148,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 18),
-
                       TextField(
                         controller: passwordController,
                         obscureText: obscurePassword,
@@ -186,9 +180,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 28),
-
                       SizedBox(
                         width: double.infinity,
                         height: 55,
@@ -220,9 +212,7 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                         ),
                       ),
-
                       const SizedBox(height: 20),
-
                       const Text(
                         'نظام مولدتي لإدارة الاشتراكات والحسابات',
                         textAlign: TextAlign.center,
