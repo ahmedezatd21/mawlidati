@@ -12,9 +12,12 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
 
   bool isLoading = false;
   bool obscurePassword = true;
+  bool obscureConfirmPassword = true;
+  bool isRegisterMode = false;
 
   Future<void> login() async {
     final email = emailController.text.trim();
@@ -30,13 +33,11 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
 
     try {
-      final response = await Supabase.instance.client.auth
-          .signInWithPassword(
+      final response =
+          await Supabase.instance.client.auth.signInWithPassword(
         email: email,
         password: password,
       );
@@ -54,9 +55,67 @@ class _LoginPageState extends State<LoginPage> {
       }
     } finally {
       if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
+        setState(() => isLoading = false);
+      }
+    }
+  }
+
+  Future<void> register() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+    final confirmPassword = confirmPasswordController.text;
+
+    if (email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
+      showMessage('يرجى ملء جميع الحقول');
+      return;
+    }
+
+    if (!email.contains('@') || !email.contains('.')) {
+      showMessage('يرجى إدخال بريد إلكتروني صحيح');
+      return;
+    }
+
+    if (password.length < 6) {
+      showMessage('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      return;
+    }
+
+    if (password != confirmPassword) {
+      showMessage('كلمتا المرور غير متطابقتين');
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final response =
+          await Supabase.instance.client.auth.signUp(
+        email: email,
+        password: password,
+      );
+
+      if (!mounted) return;
+
+      if (response.session != null) {
+        showMessage('تم إنشاء الحساب بنجاح');
+      } else {
+        showMessage(
+          'تم إنشاء الحساب. يرجى فحص بريدك الإلكتروني لتأكيده',
+        );
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        showMessage('تعذر إنشاء الحساب: ${e.message}');
+      }
+    } catch (e) {
+      if (mounted) {
+        showMessage('خطأ اتصال: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
       }
     }
   }
@@ -70,10 +129,19 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  void toggleMode() {
+    setState(() {
+      isRegisterMode = !isRegisterMode;
+      passwordController.clear();
+      confirmPasswordController.clear();
+    });
+  }
+
   @override
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
+    confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -121,14 +189,18 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'إدارة مولدتك أصبحت أسهل',
-                        style: TextStyle(
+                      Text(
+                        isRegisterMode
+                            ? 'أنشئ حسابك وابدأ بإدارة مولدتك'
+                            : 'إدارة مولدتك أصبحت أسهل',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
                           fontSize: 15,
                           color: Colors.grey,
                         ),
                       ),
                       const SizedBox(height: 35),
+
                       TextField(
                         controller: emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -139,16 +211,11 @@ class _LoginPageState extends State<LoginPage> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF008B72),
-                              width: 2,
-                            ),
-                          ),
                         ),
                       ),
+
                       const SizedBox(height: 18),
+
                       TextField(
                         controller: passwordController,
                         obscureText: obscurePassword,
@@ -171,21 +238,47 @@ class _LoginPageState extends State<LoginPage> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF008B72),
-                              width: 2,
+                        ),
+                      ),
+
+                      if (isRegisterMode) ...[
+                        const SizedBox(height: 18),
+                        TextField(
+                          controller: confirmPasswordController,
+                          obscureText: obscureConfirmPassword,
+                          textDirection: TextDirection.ltr,
+                          decoration: InputDecoration(
+                            labelText: 'تأكيد كلمة المرور',
+                            prefixIcon: const Icon(Icons.lock_reset),
+                            suffixIcon: IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  obscureConfirmPassword =
+                                      !obscureConfirmPassword;
+                                });
+                              },
+                              icon: Icon(
+                                obscureConfirmPassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                              ),
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
                           ),
                         ),
-                      ),
+                      ],
+
                       const SizedBox(height: 28),
+
                       SizedBox(
                         width: double.infinity,
                         height: 55,
                         child: ElevatedButton(
-                          onPressed: isLoading ? null : login,
+                          onPressed: isLoading
+                              ? null
+                              : (isRegisterMode ? register : login),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF008B72),
                             foregroundColor: Colors.white,
@@ -203,16 +296,35 @@ class _LoginPageState extends State<LoginPage> {
                                     strokeWidth: 3,
                                   ),
                                 )
-                              : const Text(
-                                  'تسجيل الدخول',
-                                  style: TextStyle(
+                              : Text(
+                                  isRegisterMode
+                                      ? 'إنشاء حساب جديد'
+                                      : 'تسجيل الدخول',
+                                  style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+
+                      const SizedBox(height: 18),
+
+                      TextButton(
+                        onPressed: isLoading ? null : toggleMode,
+                        child: Text(
+                          isRegisterMode
+                              ? 'لديك حساب بالفعل؟ تسجيل الدخول'
+                              : 'ليس لديك حساب؟ أنشئ حساباً جديداً',
+                          style: const TextStyle(
+                            color: Color(0xFF008B72),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
                       const Text(
                         'نظام مولدتي لإدارة الاشتراكات والحسابات',
                         textAlign: TextAlign.center,
