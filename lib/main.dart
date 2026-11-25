@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 
 import 'screens/subscribers_page.dart';
 import 'screens/generators_page.dart';
+import 'screens/invoices_page.dart';
+import 'screens/debts_page.dart';
+import 'screens/expenses_page.dart';
+import 'screens/profits_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +36,15 @@ class MawlidatiApp extends StatelessWidget {
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
+
+  void openPage(BuildContext context, Widget page) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => page,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,36 +113,60 @@ class DashboardPage extends StatelessWidget {
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
                 childAspectRatio: 1.25,
-                children: const [
+                children: [
                   DashboardCard(
                     title: 'المولدات',
-                    value: '0',
+                    value: 'إدارة المولدات',
                     icon: Icons.electric_bolt,
+                    onTap: () => openPage(
+                      context,
+                      const GeneratorsPage(),
+                    ),
                   ),
                   DashboardCard(
                     title: 'المشتركون',
-                    value: '0',
+                    value: 'إدارة المشتركين',
                     icon: Icons.people,
+                    onTap: () => openPage(
+                      context,
+                      const SubscribersPage(),
+                    ),
                   ),
                   DashboardCard(
                     title: 'الفواتير',
-                    value: '0',
+                    value: 'إدارة الفواتير',
                     icon: Icons.receipt_long,
+                    onTap: () => openPage(
+                      context,
+                      const InvoicesPage(),
+                    ),
                   ),
                   DashboardCard(
                     title: 'الديون',
-                    value: '0 د.ع',
+                    value: 'ديون المشتركين',
                     icon: Icons.account_balance_wallet,
+                    onTap: () => openPage(
+                      context,
+                      const DebtsPage(),
+                    ),
                   ),
                   DashboardCard(
                     title: 'المصاريف',
-                    value: '0 د.ع',
+                    value: 'تسجيل المصاريف',
                     icon: Icons.payments,
+                    onTap: () => openPage(
+                      context,
+                      const ExpensesPage(),
+                    ),
                   ),
                   DashboardCard(
                     title: 'الأرباح',
-                    value: '0 د.ع',
+                    value: 'تقارير الأرباح',
                     icon: Icons.trending_up,
+                    onTap: () => openPage(
+                      context,
+                      const ProfitsPage(),
+                    ),
                   ),
                 ],
               ),
@@ -149,42 +186,55 @@ class DashboardPage extends StatelessWidget {
               ServiceTile(
                 title: 'إدارة المولدات',
                 icon: Icons.electric_bolt,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const GeneratorsPage(),
-                    ),
-                  );
-                },
+                onTap: () => openPage(
+                  context,
+                  const GeneratorsPage(),
+                ),
               ),
 
               ServiceTile(
                 title: 'إدارة المشتركين',
                 icon: Icons.people_outline,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SubscribersPage(),
-                    ),
-                  );
-                },
+                onTap: () => openPage(
+                  context,
+                  const SubscribersPage(),
+                ),
               ),
 
-              const ServiceTile(
+              ServiceTile(
                 title: 'إدارة الفواتير',
                 icon: Icons.receipt_long,
+                onTap: () => openPage(
+                  context,
+                  const InvoicesPage(),
+                ),
               ),
 
-              const ServiceTile(
+              ServiceTile(
+                title: 'إدارة الديون',
+                icon: Icons.account_balance_wallet,
+                onTap: () => openPage(
+                  context,
+                  const DebtsPage(),
+                ),
+              ),
+
+              ServiceTile(
                 title: 'تسجيل المصاريف',
                 icon: Icons.money,
+                onTap: () => openPage(
+                  context,
+                  const ExpensesPage(),
+                ),
               ),
 
-              const ServiceTile(
-                title: 'تقارير المولدة',
+              ServiceTile(
+                title: 'تقارير الأرباح',
                 icon: Icons.bar_chart,
+                onTap: () => openPage(
+                  context,
+                  const ProfitsPage(),
+                ),
               ),
             ],
           ),
@@ -198,46 +248,59 @@ class DashboardCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
+  final VoidCallback onTap;
 
   const DashboardCard({
     super.key,
     required this.title,
     required this.value,
     required this.icon,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Icon(
-            icon,
-            color: const Color(0xFF008B72),
-            size: 29,
-          ),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.black54,
-              fontSize: 14,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: Colors.grey.shade200,
             ),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(
+                icon,
+                color: const Color(0xFF008B72),
+                size: 29,
+              ),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.black54,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -246,13 +309,13 @@ class DashboardCard extends StatelessWidget {
 class ServiceTile extends StatelessWidget {
   final String title;
   final IconData icon;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
   const ServiceTile({
     super.key,
     required this.title,
     required this.icon,
-    this.onTap,
+    required this.onTap,
   });
 
   @override
