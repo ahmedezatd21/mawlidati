@@ -21,6 +21,14 @@ class MawlidatiApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'مولدتي',
+
+      builder: (context, child) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: child ?? const SizedBox(),
+        );
+      },
+
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
@@ -28,7 +36,13 @@ class MawlidatiApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: const Color(0xFFF4F7F8),
         fontFamily: 'Arial',
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF063B35),
+          foregroundColor: Colors.white,
+          centerTitle: false,
+        ),
       ),
+
       home: const DashboardPage(),
     );
   }
@@ -48,196 +62,192 @@ class DashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF063B35),
-          foregroundColor: Colors.white,
-          title: const Text(
-            'مولدتي',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'مولدتي',
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF063B35),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'مرحباً بك في مولدتي',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 15,
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    Text(
-                      'إدارة مولدتك أصبحت أسهل',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+      ),
+
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF063B35),
+                borderRadius: BorderRadius.circular(20),
               ),
-
-              const SizedBox(height: 24),
-
-              const Text(
-                'لوحة التحكم',
-                style: TextStyle(
-                  fontSize: 21,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.25,
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  DashboardCard(
-                    title: 'المولدات',
-                    value: 'إدارة المولدات',
-                    icon: Icons.electric_bolt,
-                    onTap: () => openPage(
-                      context,
-                      const GeneratorsPage(),
+                  Text(
+                    'مرحباً بك في مولدتي',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 15,
                     ),
                   ),
-                  DashboardCard(
-                    title: 'المشتركون',
-                    value: 'إدارة المشتركين',
-                    icon: Icons.people,
-                    onTap: () => openPage(
-                      context,
-                      const SubscribersPage(),
-                    ),
-                  ),
-                  DashboardCard(
-                    title: 'الفواتير',
-                    value: 'إدارة الفواتير',
-                    icon: Icons.receipt_long,
-                    onTap: () => openPage(
-                      context,
-                      const InvoicesPage(),
-                    ),
-                  ),
-                  DashboardCard(
-                    title: 'الديون',
-                    value: 'ديون المشتركين',
-                    icon: Icons.account_balance_wallet,
-                    onTap: () => openPage(
-                      context,
-                      const DebtsPage(),
-                    ),
-                  ),
-                  DashboardCard(
-                    title: 'المصاريف',
-                    value: 'تسجيل المصاريف',
-                    icon: Icons.payments,
-                    onTap: () => openPage(
-                      context,
-                      const ExpensesPage(),
-                    ),
-                  ),
-                  DashboardCard(
-                    title: 'الأرباح',
-                    value: 'تقارير الأرباح',
-                    icon: Icons.trending_up,
-                    onTap: () => openPage(
-                      context,
-                      const ProfitsPage(),
+                  SizedBox(height: 12),
+                  Text(
+                    'إدارة مولدتك أصبحت أسهل',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
+            ),
 
-              const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-              const Text(
-                'الخدمات',
-                style: TextStyle(
-                  fontSize: 21,
-                  fontWeight: FontWeight.bold,
-                ),
+            const Text(
+              'لوحة التحكم',
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.bold,
               ),
+            ),
 
-              const SizedBox(height: 12),
+            const SizedBox(height: 14),
 
-              ServiceTile(
-                title: 'إدارة المولدات',
-                icon: Icons.electric_bolt,
-                onTap: () => openPage(
-                  context,
-                  const GeneratorsPage(),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.25,
+              children: [
+                DashboardCard(
+                  title: 'المولدات',
+                  value: 'إدارة المولدات',
+                  icon: Icons.electric_bolt,
+                  onTap: () => openPage(
+                    context,
+                    const GeneratorsPage(),
+                  ),
                 ),
-              ),
-
-              ServiceTile(
-                title: 'إدارة المشتركين',
-                icon: Icons.people_outline,
-                onTap: () => openPage(
-                  context,
-                  const SubscribersPage(),
+                DashboardCard(
+                  title: 'المشتركون',
+                  value: 'إدارة المشتركين',
+                  icon: Icons.people,
+                  onTap: () => openPage(
+                    context,
+                    const SubscribersPage(),
+                  ),
                 ),
-              ),
-
-              ServiceTile(
-                title: 'إدارة الفواتير',
-                icon: Icons.receipt_long,
-                onTap: () => openPage(
-                  context,
-                  const InvoicesPage(),
+                DashboardCard(
+                  title: 'الفواتير',
+                  value: 'إدارة الفواتير',
+                  icon: Icons.receipt_long,
+                  onTap: () => openPage(
+                    context,
+                    const InvoicesPage(),
+                  ),
                 ),
-              ),
-
-              ServiceTile(
-                title: 'إدارة الديون',
-                icon: Icons.account_balance_wallet,
-                onTap: () => openPage(
-                  context,
-                  const DebtsPage(),
+                DashboardCard(
+                  title: 'الديون',
+                  value: 'ديون المشتركين',
+                  icon: Icons.account_balance_wallet,
+                  onTap: () => openPage(
+                    context,
+                    const DebtsPage(),
+                  ),
                 ),
-              ),
-
-              ServiceTile(
-                title: 'تسجيل المصاريف',
-                icon: Icons.money,
-                onTap: () => openPage(
-                  context,
-                  const ExpensesPage(),
+                DashboardCard(
+                  title: 'المصاريف',
+                  value: 'تسجيل المصاريف',
+                  icon: Icons.payments,
+                  onTap: () => openPage(
+                    context,
+                    const ExpensesPage(),
+                  ),
                 ),
-              ),
-
-              ServiceTile(
-                title: 'تقارير الأرباح',
-                icon: Icons.bar_chart,
-                onTap: () => openPage(
-                  context,
-                  const ProfitsPage(),
+                DashboardCard(
+                  title: 'الأرباح',
+                  value: 'تقارير الأرباح',
+                  icon: Icons.trending_up,
+                  onTap: () => openPage(
+                    context,
+                    const ProfitsPage(),
+                  ),
                 ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            const Text(
+              'الخدمات',
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.bold,
               ),
-            ],
-          ),
+            ),
+
+            const SizedBox(height: 12),
+
+            ServiceTile(
+              title: 'إدارة المولدات',
+              icon: Icons.electric_bolt,
+              onTap: () => openPage(
+                context,
+                const GeneratorsPage(),
+              ),
+            ),
+
+            ServiceTile(
+              title: 'إدارة المشتركين',
+              icon: Icons.people_outline,
+              onTap: () => openPage(
+                context,
+                const SubscribersPage(),
+              ),
+            ),
+
+            ServiceTile(
+              title: 'إدارة الفواتير',
+              icon: Icons.receipt_long,
+              onTap: () => openPage(
+                context,
+                const InvoicesPage(),
+              ),
+            ),
+
+            ServiceTile(
+              title: 'إدارة الديون',
+              icon: Icons.account_balance_wallet,
+              onTap: () => openPage(
+                context,
+                const DebtsPage(),
+              ),
+            ),
+
+            ServiceTile(
+              title: 'تسجيل المصاريف',
+              icon: Icons.money,
+              onTap: () => openPage(
+                context,
+                const ExpensesPage(),
+              ),
+            ),
+
+            ServiceTile(
+              title: 'تقارير الأرباح',
+              icon: Icons.bar_chart,
+              onTap: () => openPage(
+                context,
+                const ProfitsPage(),
+              ),
+            ),
+          ],
         ),
       ),
     );
