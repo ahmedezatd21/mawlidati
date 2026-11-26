@@ -22,7 +22,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -46,6 +46,19 @@ class DatabaseHelper {
               FOREIGN KEY (invoice_id)
                 REFERENCES invoices(id)
                 ON DELETE CASCADE
+            )
+          ''');
+        }
+
+        if (oldVersion < 5) {
+          await db.execute('''
+            CREATE TABLE app_license (
+              id INTEGER PRIMARY KEY CHECK (id = 1),
+              owner_id TEXT NOT NULL,
+              license_token TEXT NOT NULL,
+              expiry_date TEXT NOT NULL,
+              last_verified_at TEXT NOT NULL,
+              status TEXT NOT NULL
             )
           ''');
         }
@@ -120,6 +133,18 @@ class DatabaseHelper {
         FOREIGN KEY (invoice_id)
           REFERENCES invoices(id)
           ON DELETE CASCADE
+      )
+    ''');
+
+    // جدول ترخيص التطبيق
+    await db.execute('''
+      CREATE TABLE app_license (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        owner_id TEXT NOT NULL,
+        license_token TEXT NOT NULL,
+        expiry_date TEXT NOT NULL,
+        last_verified_at TEXT NOT NULL,
+        status TEXT NOT NULL
       )
     ''');
   }
@@ -302,7 +327,6 @@ class DatabaseHelper {
     return 'مدفوع جزئياً';
   }
 
-  // تسجيل دفعة وتحديث الفاتورة تلقائياً
   Future<int> recordPayment(Map<String, dynamic> data) async {
     final db = await database;
 
@@ -327,7 +351,8 @@ class DatabaseHelper {
 
       final invoice = invoices.first;
       final total = (invoice['amount'] as num).toDouble();
-      final paid = (invoice['paid_amount'] as num?)?.toDouble() ?? 0;
+      final paid =
+          (invoice['paid_amount'] as num?)?.toDouble() ?? 0;
       final remaining = total - paid;
 
       if (paymentAmount > remaining + 0.001) {
@@ -355,7 +380,6 @@ class DatabaseHelper {
     });
   }
 
-  // إبقاء الاسم القديم حتى تعمل الصفحات التي تستعمله
   Future<int> insertPayment(Map<String, dynamic> data) {
     return recordPayment(data);
   }
@@ -377,7 +401,6 @@ class DatabaseHelper {
     );
   }
 
-  // حذف دفعة وإعادة حساب الفاتورة
   Future<int> deletePayment(int id) async {
     final db = await database;
 
@@ -466,6 +489,52 @@ class DatabaseHelper {
       'expenses',
       where: 'id = ?',
       whereArgs: [id],
+    );
+  }
+
+  // =========================
+  // ترخيص تطبيق مولدتي
+  // =========================
+
+  Future<Map<String, dynamic>?> getLicense() async {
+    final db = await database;
+
+    final result = await db.query(
+      'app_license',
+      where: 'id = ?',
+      whereArgs: [1],
+      limit: 1,
+    );
+
+    if (result.isEmpty) return null;
+
+    return result.first;
+  }
+
+  Future<void> saveLicense(Map<String, dynamic> data) async {
+    final db = await database;
+
+    await db.insert(
+      'app_license',
+      {
+        'id': 1,
+        'owner_id': data['owner_id'],
+        'license_token': data['license_token'],
+        'expiry_date': data['expiry_date'],
+        'last_verified_at': data['last_verified_at'],
+        'status': data['status'],
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<int> deleteLicense() async {
+    final db = await database;
+
+    return db.delete(
+      'app_license',
+      where: 'id = ?',
+      whereArgs: [1],
     );
   }
 }
