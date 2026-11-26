@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -38,6 +39,7 @@ button{
   cursor:pointer;
 }
 .stop{background:#b83232}
+.secondary{background:#365e57}
 .owner{
   border:1px solid #e1e8e6;
   padding:14px;
@@ -47,6 +49,15 @@ button{
 .hidden{display:none}
 #message{color:#b83232}
 .status{font-weight:bold}
+.token{
+  direction:ltr;
+  text-align:center;
+  background:#f0f7f5;
+  padding:12px;
+  overflow-wrap:anywhere;
+  border-radius:8px;
+  font-weight:bold;
+}
 </style>
 </head>
 
@@ -60,13 +71,8 @@ button{
 
 <div class="card" id="loginBox">
 <h2>دخول المدير</h2>
-
-<input id="email" type="email"
-placeholder="البريد الإلكتروني">
-
-<input id="password" type="password"
-placeholder="كلمة المرور">
-
+<input id="email" type="email" placeholder="البريد الإلكتروني">
+<input id="password" type="password" placeholder="كلمة المرور">
 <button onclick="login()">تسجيل الدخول</button>
 <p id="message"></p>
 </div>
@@ -76,30 +82,20 @@ placeholder="كلمة المرور">
 <div class="card">
 <h2>إضافة صاحب مولدة</h2>
 
-<input id="ownerName"
-placeholder="اسم صاحب المولدة">
-
-<input id="ownerPhone"
-placeholder="رقم الهاتف">
+<input id="ownerName" placeholder="اسم صاحب المولدة">
+<input id="ownerPhone" placeholder="رقم الهاتف">
 
 <label>تاريخ انتهاء الاشتراك</label>
 <input id="expiryDate" type="date">
 
-<button onclick="addOwner()">
-إضافة صاحب مولدة
-</button>
+<button onclick="addOwner()">إضافة وإصدار رمز التفعيل</button>
 </div>
 
 <div class="card">
 <h2>أصحاب المولدات</h2>
+<div id="ownersList">جاري تحميل البيانات...</div>
 
-<div id="ownersList">
-جاري تحميل البيانات...
-</div>
-
-<button class="stop" onclick="logout()">
-تسجيل الخروج
-</button>
+<button class="stop" onclick="logout()">تسجيل الخروج</button>
 </div>
 
 </div>
@@ -110,15 +106,14 @@ placeholder="رقم الهاتف">
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 
 <script>
-
-// إعدادات Firebase الخاصة بمشروع مولدتي
+const ADMIN_UID = "jGhFt4kj6jQ4lCgFqpX9I8VW7Ak2";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5_7pTgiCPVch3NhrMifhvY9BpAZeAjBw",
   authDomain: "mawalidati-4db02.firebaseapp.com",
-  databaseURL: "https://mawalidati-4db02-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "mawalidati-4db02",
-  storageBucket: "mawalidati-4db02.firebasestorage.app",
+  databaseURL: "https://mawlidati-4db02-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "mawlidati-4db02",
+  storageBucket: "mawlidati-4db02.firebasestorage.app",
   messagingSenderId: "728350015048",
   appId: "1:728350015048:web:98bb3128fe0a523e53e27d"
 };
@@ -128,16 +123,11 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
 
-
-// تسجيل دخول المدير
+let ownersListener = null;
 
 function login(){
-
-  const email =
-    document.getElementById("email").value.trim();
-
-  const password =
-    document.getElementById("password").value;
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
 
   if(!email || !password){
     alert("أدخل البريد الإلكتروني وكلمة المرور");
@@ -145,50 +135,52 @@ function login(){
   }
 
   auth.signInWithEmailAndPassword(email,password)
-  .catch(error=>{
-    document.getElementById("message").textContent =
-      "تعذر تسجيل الدخول: " + error.message;
-  });
+    .catch(error=>{
+      document.getElementById("message").textContent =
+        "تعذر تسجيل الدخول: " + error.message;
+    });
 }
 
-
-// متابعة حالة تسجيل الدخول
-
 auth.onAuthStateChanged(user=>{
-
-  if(user){
-
-    document.getElementById("loginBox")
-      .classList.add("hidden");
-
-    document.getElementById("dashboard")
-      .classList.remove("hidden");
-
+  if(user && user.uid === ADMIN_UID){
+    document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("dashboard").classList.remove("hidden");
     loadOwners();
-
   }else{
+    document.getElementById("loginBox").classList.remove("hidden");
+    document.getElementById("dashboard").classList.add("hidden");
 
-    document.getElementById("loginBox")
-      .classList.remove("hidden");
-
-    document.getElementById("dashboard")
-      .classList.add("hidden");
-
+    if(user){
+      auth.signOut();
+      document.getElementById("message").textContent =
+        "هذا الحساب ليس حساب المدير المصرح له.";
+    }
+    stopOwnersListener();
   }
-
 });
 
+function stopOwnersListener(){
+  if(ownersListener){
+    db.ref("generator_owners").off("value",ownersListener);
+    ownersListener = null;
+  }
+}
 
-// تحميل أصحاب المولدات
+function generateToken(){
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes)
+    .map(b=>b.toString(16).padStart(2,"0"))
+    .join("");
+}
 
 function loadOwners(){
+  stopOwnersListener();
 
   const list = document.getElementById("ownersList");
-
   list.textContent = "جاري تحميل البيانات...";
 
-  db.ref("generator_owners").on("value",snapshot=>{
-
+  ownersListener = snapshot=>{
     list.innerHTML = "";
 
     if(!snapshot.exists()){
@@ -197,7 +189,6 @@ function loadOwners(){
     }
 
     snapshot.forEach(child=>{
-
       const owner = child.val() || {};
       const id = child.key;
 
@@ -208,148 +199,233 @@ function loadOwners(){
       title.textContent = owner.name || "بدون اسم";
 
       const phone = document.createElement("p");
-      phone.textContent =
-        "رقم الهاتف: " + (owner.phone || "-");
+      phone.textContent = "رقم الهاتف: " + (owner.phone || "-");
 
       const status = document.createElement("p");
       status.className = "status";
       status.textContent =
-        "حالة الاشتراك: " +
-        (owner.subscription_status || "غير محدد");
+        "حالة الاشتراك: " + (owner.subscription_status || "غير محدد");
 
       const expiry = document.createElement("p");
       expiry.textContent =
         "تاريخ الانتهاء: " + (owner.expiry_date || "-");
 
-      const button = document.createElement("button");
+      div.append(title,phone,status,expiry);
 
-      button.textContent =
+      if(owner.license_token){
+        const tokenTitle = document.createElement("p");
+        tokenTitle.textContent = "رمز التفعيل:";
+
+        const token = document.createElement("div");
+        token.className = "token";
+        token.textContent = owner.license_token;
+
+        const copy = document.createElement("button");
+        copy.className = "secondary";
+        copy.textContent = "نسخ رمز التفعيل";
+        copy.onclick = ()=>copyToken(owner.license_token);
+
+        div.append(tokenTitle,token,copy);
+      }else{
+        const issue = document.createElement("button");
+        issue.textContent = "إصدار رمز تفعيل";
+        issue.onclick = ()=>issueToken(id,owner);
+        div.appendChild(issue);
+      }
+
+      const newExpiry = document.createElement("input");
+      newExpiry.type = "date";
+      newExpiry.value = owner.expiry_date || "";
+
+      const renew = document.createElement("button");
+      renew.textContent = "تجديد الاشتراك";
+      renew.onclick = ()=>renewOwner(id,owner,newExpiry.value);
+
+      const toggle = document.createElement("button");
+      toggle.textContent =
         owner.subscription_status === "active"
         ? "إيقاف الاشتراك"
         : "تفعيل الاشتراك";
 
-      button.className =
-        owner.subscription_status === "active"
-        ? "stop"
-        : "";
+      toggle.className =
+        owner.subscription_status === "active" ? "stop" : "";
 
-      button.onclick = ()=>{
-        toggleStatus(id,owner.subscription_status);
-      };
+      toggle.onclick = ()=>toggleStatus(id,owner);
 
-      div.appendChild(title);
-      div.appendChild(phone);
-      div.appendChild(status);
-      div.appendChild(expiry);
-      div.appendChild(button);
-
+      div.append(newExpiry,renew,toggle);
       list.appendChild(div);
-
     });
+  };
 
-  },error=>{
-
-    list.textContent =
-      "خطأ في تحميل البيانات: " + error.message;
-
+  db.ref("generator_owners").on("value",ownersListener,error=>{
+    list.textContent = "خطأ في تحميل البيانات: " + error.message;
   });
-
 }
 
-
-// إضافة صاحب مولدة
-
-function addOwner(){
-
-  const name =
-    document.getElementById("ownerName").value.trim();
-
-  const phone =
-    document.getElementById("ownerPhone").value.trim();
-
-  const expiry =
-    document.getElementById("expiryDate").value;
+async function addOwner(){
+  const name = document.getElementById("ownerName").value.trim();
+  const phone = document.getElementById("ownerPhone").value.trim();
+  const expiry = document.getElementById("expiryDate").value;
 
   if(!name || !phone || !expiry){
     alert("يرجى إدخال جميع البيانات");
     return;
   }
 
-  const id =
-    db.ref("generator_owners").push().key;
+  const today = new Date().toISOString().slice(0,10);
 
-  const today =
-    new Date().toISOString().slice(0,10);
+  if(expiry < today){
+    alert("تاريخ الانتهاء يجب أن يكون اليوم أو بعده");
+    return;
+  }
 
-  db.ref("generator_owners/" + id).set({
+  const id = db.ref("generator_owners").push().key;
+  const token = generateToken();
 
-    name:name,
-    phone:phone,
+  const owner = {
+    name,
+    phone,
     subscription_status:"active",
     start_date:today,
     expiry_date:expiry,
-    grace_days:7
+    grace_days:7,
+    license_token:token
+  };
 
-  }).then(()=>{
+  const license = {
+    owner_id:id,
+    owner_name:name,
+    status:"active",
+    expiry_date:expiry,
+    updated_at:today
+  };
 
-    alert("تمت إضافة صاحب المولدة بنجاح");
+  try{
+    await Promise.all([
+      db.ref("generator_owners/" + id).set(owner),
+      db.ref("licenses/" + token).set(license)
+    ]);
+
+    alert("تمت الإضافة وإصدار رمز التفعيل:\n" + token);
 
     document.getElementById("ownerName").value="";
     document.getElementById("ownerPhone").value="";
     document.getElementById("expiryDate").value="";
-
-  }).catch(error=>{
-
-    alert("تعذر إضافة صاحب المولدة: " + error.message);
-
-  });
-
+  }catch(error){
+    alert("تعذر إكمال الإضافة: " + error.message +
+      "\nتحقق من الاتصال والبيانات قبل إعادة المحاولة.");
+  }
 }
 
+async function issueToken(id,owner){
+  if(owner.license_token){
+    alert("هذا صاحب المولدة لديه رمز بالفعل");
+    return;
+  }
 
-// تفعيل أو إيقاف الاشتراك
+  const token = generateToken();
+  const today = new Date().toISOString().slice(0,10);
 
-function toggleStatus(id,currentStatus){
+  try{
+    await Promise.all([
+      db.ref("generator_owners/" + id + "/license_token").set(token),
+      db.ref("licenses/" + token).set({
+        owner_id:id,
+        owner_name:owner.name || "",
+        status:owner.subscription_status || "active",
+        expiry_date:owner.expiry_date || "",
+        updated_at:today
+      })
+    ]);
+
+    alert("تم إصدار رمز التفعيل:\n" + token);
+  }catch(error){
+    alert("تعذر إصدار الرمز: " + error.message);
+  }
+}
+
+async function renewOwner(id,owner,expiry){
+  if(!expiry){
+    alert("اختر تاريخ انتهاء جديد");
+    return;
+  }
+
+  const today = new Date().toISOString().slice(0,10);
+  if(expiry < today){
+    alert("اختر تاريخاً مستقبلياً");
+    return;
+  }
+
+  if(!owner.license_token){
+    alert("أصدر رمز تفعيل لهذا الحساب أولاً");
+    return;
+  }
+
+  try{
+    await Promise.all([
+      db.ref("generator_owners/" + id).update({
+        expiry_date:expiry,
+        subscription_status:"active"
+      }),
+      db.ref("licenses/" + owner.license_token).update({
+        expiry_date:expiry,
+        status:"active",
+        updated_at:today
+      })
+    ]);
+
+    alert("تم تجديد الاشتراك");
+  }catch(error){
+    alert("تعذر التجديد: " + error.message);
+  }
+}
+
+async function toggleStatus(id,owner){
+  if(!owner.license_token){
+    alert("هذا الحساب لا يمتلك رمز تفعيل بعد");
+    return;
+  }
 
   const newStatus =
-    currentStatus === "active"
-    ? "suspended"
-    : "active";
+    owner.subscription_status === "active" ? "suspended" : "active";
 
-  const confirmation = confirm(
+  if(!confirm(
     newStatus === "suspended"
-    ? "هل تريد إيقاف اشتراك صاحب المولدة؟"
-    : "هل تريد تفعيل اشتراك صاحب المولدة؟"
-  );
+    ? "هل تريد إيقاف الاشتراك؟"
+    : "هل تريد تفعيل الاشتراك؟"
+  )) return;
 
-  if(!confirmation) return;
+  const today = new Date().toISOString().slice(0,10);
 
-  db.ref("generator_owners/" + id + "/subscription_status")
-  .set(newStatus)
-  .then(()=>{
+  try{
+    await Promise.all([
+      db.ref("generator_owners/" + id + "/subscription_status")
+        .set(newStatus),
+      db.ref("licenses/" + owner.license_token).update({
+        status:newStatus,
+        updated_at:today
+      })
+    ]);
 
-    alert(
-      newStatus === "active"
-      ? "تم تفعيل الاشتراك"
-      : "تم إيقاف الاشتراك"
-    );
-
-  })
-  .catch(error=>{
-
-    alert("حدث خطأ: " + error.message);
-
-  });
-
+    alert("تم تحديث حالة الاشتراك");
+  }catch(error){
+    alert("تعذر تحديث الحالة: " + error.message);
+  }
 }
 
-
-// تسجيل الخروج
+async function copyToken(token){
+  try{
+    await navigator.clipboard.writeText(token);
+    alert("تم نسخ رمز التفعيل");
+  }catch(error){
+    prompt("انسخ رمز التفعيل:",token);
+  }
+}
 
 function logout(){
+  stopOwnersListener();
   auth.signOut();
 }
-
 </script>
 </body>
 </html>
