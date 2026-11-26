@@ -1,1 +1,30 @@
-
+{
+  "project_info": {
+    "project_number": "728350015048",
+    "firebase_url": "https://mawalidati-4db02-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "mawalidati-4db02",
+    "storage_bucket": "mawalidati-4db02.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:728350015048:android:f1459e1c861ba5d953e27d",
+        "android_client_info": {
+          "package_name": "com.mawlidati.mawlidati"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuPvm5MmjXFphdDrh5ds0hBBZsjIcJN90"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
