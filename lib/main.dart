@@ -8,6 +8,9 @@ import 'screens/invoices_page.dart';
 import 'screens/debts_page.dart';
 import 'screens/expenses_page.dart';
 import 'screens/profits_page.dart';
+import 'screens/activation_page.dart';
+
+import 'services/license_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,12 +28,14 @@ class MawlidatiApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'مولدتي',
+
       builder: (context, child) {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: child ?? const SizedBox(),
         );
       },
+
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
@@ -44,11 +49,68 @@ class MawlidatiApp extends StatelessWidget {
           centerTitle: false,
         ),
       ),
-      home: const DashboardPage(),
+
+      home: const LicenseGate(),
     );
   }
 }
 
+// فحص اشتراك التطبيق قبل فتح لوحة التحكم
+class LicenseGate extends StatefulWidget {
+  const LicenseGate({super.key});
+
+  @override
+  State<LicenseGate> createState() => _LicenseGateState();
+}
+
+class _LicenseGateState extends State<LicenseGate> {
+  late Future<LicenseResult> licenseFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    licenseFuture = LicenseService.instance.checkLicense();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<LicenseResult>(
+      future: licenseFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: Color(0xFFF4F7F8),
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(
+                    color: Color(0xFF008B72),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'جارٍ التحقق من الاشتراك...',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        if (snapshot.hasData && snapshot.data!.allowed) {
+          return const DashboardPage();
+        }
+
+        return const ActivationPage(
+          home: DashboardPage(),
+        );
+      },
+    );
+  }
+}
+
+// لوحة التحكم الرئيسية
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
 
@@ -68,6 +130,7 @@ class DashboardPage extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -102,7 +165,9 @@ class DashboardPage extends StatelessWidget {
                 ],
               ),
             ),
+
             const SizedBox(height: 24),
+
             const Text(
               'لوحة التحكم',
               style: TextStyle(
@@ -110,7 +175,9 @@ class DashboardPage extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
+
             const SizedBox(height: 14),
+
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -118,6 +185,7 @@ class DashboardPage extends StatelessWidget {
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
               childAspectRatio: 1.25,
+
               children: [
                 DashboardCard(
                   title: 'المولدات',
@@ -128,6 +196,7 @@ class DashboardPage extends StatelessWidget {
                     const GeneratorsPage(),
                   ),
                 ),
+
                 DashboardCard(
                   title: 'المشتركون',
                   value: 'إدارة المشتركين',
@@ -137,6 +206,7 @@ class DashboardPage extends StatelessWidget {
                     const SubscribersPage(),
                   ),
                 ),
+
                 DashboardCard(
                   title: 'الفواتير',
                   value: 'إدارة الفواتير',
@@ -146,6 +216,7 @@ class DashboardPage extends StatelessWidget {
                     const InvoicesPage(),
                   ),
                 ),
+
                 DashboardCard(
                   title: 'الديون',
                   value: 'ديون المشتركين',
@@ -155,6 +226,7 @@ class DashboardPage extends StatelessWidget {
                     const DebtsPage(),
                   ),
                 ),
+
                 DashboardCard(
                   title: 'المصاريف',
                   value: 'تسجيل المصاريف',
@@ -164,6 +236,7 @@ class DashboardPage extends StatelessWidget {
                     const ExpensesPage(),
                   ),
                 ),
+
                 DashboardCard(
                   title: 'الأرباح',
                   value: 'تقارير الأرباح',
@@ -175,7 +248,9 @@ class DashboardPage extends StatelessWidget {
                 ),
               ],
             ),
+
             const SizedBox(height: 24),
+
             const Text(
               'الخدمات',
               style: TextStyle(
@@ -183,7 +258,9 @@ class DashboardPage extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
+
             const SizedBox(height: 12),
+
             ServiceTile(
               title: 'إدارة المولدات',
               icon: Icons.electric_bolt,
@@ -192,6 +269,7 @@ class DashboardPage extends StatelessWidget {
                 const GeneratorsPage(),
               ),
             ),
+
             ServiceTile(
               title: 'إدارة المشتركين',
               icon: Icons.people_outline,
@@ -200,6 +278,7 @@ class DashboardPage extends StatelessWidget {
                 const SubscribersPage(),
               ),
             ),
+
             ServiceTile(
               title: 'إدارة الفواتير',
               icon: Icons.receipt_long,
@@ -208,6 +287,7 @@ class DashboardPage extends StatelessWidget {
                 const InvoicesPage(),
               ),
             ),
+
             ServiceTile(
               title: 'إدارة الديون',
               icon: Icons.account_balance_wallet,
@@ -216,6 +296,7 @@ class DashboardPage extends StatelessWidget {
                 const DebtsPage(),
               ),
             ),
+
             ServiceTile(
               title: 'تسجيل المصاريف',
               icon: Icons.money,
@@ -224,6 +305,7 @@ class DashboardPage extends StatelessWidget {
                 const ExpensesPage(),
               ),
             ),
+
             ServiceTile(
               title: 'تقارير الأرباح',
               icon: Icons.bar_chart,
@@ -239,6 +321,7 @@ class DashboardPage extends StatelessWidget {
   }
 }
 
+// بطاقات لوحة التحكم
 class DashboardCard extends StatelessWidget {
   final String title;
   final String value;
@@ -258,24 +341,30 @@ class DashboardCard extends StatelessWidget {
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(18),
+
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
+
         child: Container(
           padding: const EdgeInsets.all(14),
+
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: Colors.grey.shade200),
           ),
+
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
             children: [
               Icon(
                 icon,
                 color: const Color(0xFF008B72),
                 size: 29,
               ),
+
               Text(
                 title,
                 style: const TextStyle(
@@ -284,6 +373,7 @@ class DashboardCard extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+
               Text(
                 value,
                 style: const TextStyle(
@@ -299,6 +389,7 @@ class DashboardCard extends StatelessWidget {
   }
 }
 
+// قائمة الخدمات
 class ServiceTile extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -315,16 +406,20 @@ class ServiceTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       color: Colors.white,
+
       child: ListTile(
         leading: Icon(
           icon,
           color: const Color(0xFF008B72),
         ),
+
         title: Text(title),
+
         trailing: const Icon(
           Icons.arrow_back_ios,
           size: 16,
         ),
+
         onTap: onTap,
       ),
     );
