@@ -16,7 +16,6 @@ class _SubscribersPageState extends State<SubscribersPage> {
   final phone = TextEditingController();
   final address = TextEditingController();
   final amperes = TextEditingController();
-  final price = TextEditingController();
   final search = TextEditingController();
 
   List<Map<String, dynamic>> generators = [];
@@ -26,6 +25,18 @@ class _SubscribersPageState extends State<SubscribersPage> {
 
   bool loading = true;
   bool saving = false;
+
+  double get selectedAmpPrice {
+    final generator = generators.firstWhere(
+      (g) => g['id'] == selectedGeneratorId,
+      orElse: () => {},
+    );
+
+    return double.tryParse(
+          generator['amp_price']?.toString() ?? '0',
+        ) ??
+        0;
+  }
 
   @override
   void initState() {
@@ -42,8 +53,12 @@ class _SubscribersPageState extends State<SubscribersPage> {
       setState(() {
         generators = data;
 
-        if (generators.isNotEmpty) {
-          selectedGeneratorId = generators.first['id'] as int;
+        if (!generators.any(
+          (g) => g['id'] == selectedGeneratorId,
+        )) {
+          selectedGeneratorId = generators.isNotEmpty
+              ? generators.first['id'] as int
+              : null;
         }
 
         loading = false;
@@ -78,6 +93,7 @@ class _SubscribersPageState extends State<SubscribersPage> {
       });
     } catch (e) {
       if (!mounted) return;
+
       setState(() => loading = false);
       message('خطأ في تحميل المشتركين: $e');
     }
@@ -100,23 +116,22 @@ class _SubscribersPageState extends State<SubscribersPage> {
     final subscriberAddress = address.text.trim();
 
     final a = double.tryParse(amperes.text.trim());
-    final p = double.tryParse(price.text.trim());
+
+    final ampPrice = selectedAmpPrice;
 
     if (selectedGeneratorId == null ||
         subscriberName.isEmpty ||
-        subscriberAddress.isEmpty ||
         a == null ||
         a <= 0 ||
-        p == null ||
-        p < 0) {
-      message('أدخل البيانات المطلوبة بشكل صحيح');
+        ampPrice <= 0) {
+      message('أدخل اسم المشترك وعدد الأمبير بشكل صحيح وتأكد من سعر المولدة');
       return;
     }
 
     setState(() => saving = true);
 
     try {
-      final monthlyFee = a * p;
+      final monthlyFee = a * ampPrice;
 
       final data = {
         'generator_id': selectedGeneratorId,
@@ -141,7 +156,6 @@ class _SubscribersPageState extends State<SubscribersPage> {
       phone.clear();
       address.clear();
       amperes.clear();
-      price.clear();
 
       await loadData();
 
@@ -159,7 +173,9 @@ class _SubscribersPageState extends State<SubscribersPage> {
     }
   }
 
-  void showSubscriberForm({Map<String, dynamic>? subscriber}) {
+  void showSubscriberForm({
+    Map<String, dynamic>? subscriber,
+  }) {
     final isEditing = subscriber != null;
 
     name.text = isEditing
@@ -178,15 +194,7 @@ class _SubscribersPageState extends State<SubscribersPage> {
         ? subscriber['ampere']?.toString() ?? ''
         : '';
 
-    if (isEditing) {
-      final amp = double.tryParse(amperes.text) ?? 0;
-      final fee =
-          double.tryParse(subscriber['monthly_fee'].toString()) ?? 0;
-
-      price.text = amp > 0 ? (fee / amp).toString() : '0';
-    } else {
-      price.clear();
-    }
+    final ampPrice = selectedAmpPrice;
 
     showModalBottomSheet(
       context: context,
@@ -195,6 +203,11 @@ class _SubscribersPageState extends State<SubscribersPage> {
         textDirection: TextDirection.rtl,
         child: StatefulBuilder(
           builder: (context, setSheetState) {
+            double currentFee() {
+              final a = double.tryParse(amperes.text) ?? 0;
+              return a * ampPrice;
+            }
+
             return Padding(
               padding: EdgeInsets.fromLTRB(
                 20,
@@ -216,29 +229,95 @@ class _SubscribersPageState extends State<SubscribersPage> {
                       ),
                     ),
 
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 20),
 
-                    field(name, 'اسم المشترك'),
-                    field(phone, 'رقم الهاتف'),
-                    field(address, 'العنوان'),
-
-                    field(
-                      amperes,
-                      'عدد الأمبير',
-                      keyboard: const TextInputType.numberWithOptions(
-                        decimal: true,
+                    TextField(
+                      controller: name,
+                      decoration: const InputDecoration(
+                        labelText: 'اسم المشترك',
+                        border: OutlineInputBorder(),
                       ),
                     ),
 
-                    field(
-                      price,
-                      'سعر الأمبير بالدينار',
-                      keyboard: const TextInputType.numberWithOptions(
-                        decimal: true,
+                    const SizedBox(height: 12),
+
+                    TextField(
+                      controller: phone,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'رقم الهاتف',
+                        border: OutlineInputBorder(),
                       ),
                     ),
 
+                    const SizedBox(height: 12),
+
+                    TextField(
+                      controller: address,
+                      decoration: const InputDecoration(
+                        labelText: 'العنوان',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    TextField(
+                      controller: amperes,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'عدد الأمبير',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (_) {
+                        setSheetState(() {});
+                      },
+                    ),
+
                     const SizedBox(height: 15),
+
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE0F2EF),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'سعر الأمبير: ${ampPrice.toStringAsFixed(0)} دينار',
+                            style: const TextStyle(fontSize: 15),
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          const Text(
+                            'الفاتورة الشهرية:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          const SizedBox(height: 5),
+
+                          Text(
+                            '${currentFee().toStringAsFixed(0)} دينار',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF008B72),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
 
                     SizedBox(
                       width: double.infinity,
@@ -246,20 +325,22 @@ class _SubscribersPageState extends State<SubscribersPage> {
                         onPressed: saving
                             ? null
                             : () async {
-                                setSheetState(() {});
                                 await saveSubscriber(
                                   id: isEditing
                                       ? subscriber['id'] as int
                                       : null,
                                   sheetContext: sheetContext,
                                 );
-
-                                if (sheetContext.mounted) {
-                                  setSheetState(() {});
-                                }
                               },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF063B35),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.all(15),
+                        ),
                         child: Text(
-                          saving ? 'جارٍ الحفظ...' : 'حفظ المشترك',
+                          saving
+                              ? 'جارٍ الحفظ...'
+                              : 'حفظ المشترك',
                         ),
                       ),
                     ),
@@ -268,24 +349,6 @@ class _SubscribersPageState extends State<SubscribersPage> {
               ),
             );
           },
-        ),
-      ),
-    );
-  }
-
-  Widget field(
-    TextEditingController controller,
-    String label, {
-    TextInputType keyboard = TextInputType.text,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboard,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
         ),
       ),
     );
@@ -329,7 +392,6 @@ class _SubscribersPageState extends State<SubscribersPage> {
     phone.dispose();
     address.dispose();
     amperes.dispose();
-    price.dispose();
     search.dispose();
     super.dispose();
   }
@@ -339,9 +401,9 @@ class _SubscribersPageState extends State<SubscribersPage> {
     final filtered = subscribers.where((s) {
       final n = (s['name'] ?? '').toString();
       final p = (s['phone'] ?? '').toString();
+      final query = search.text.trim();
 
-      return n.contains(search.text) ||
-          p.contains(search.text);
+      return n.contains(query) || p.contains(query);
     }).toList();
 
     return Directionality(
@@ -387,7 +449,9 @@ class _SubscribersPageState extends State<SubscribersPage> {
                           items: generators.map((g) {
                             return DropdownMenuItem<int>(
                               value: g['id'] as int,
-                              child: Text(g['name'].toString()),
+                              child: Text(
+                                g['name'].toString(),
+                              ),
                             );
                           }).toList(),
                           onChanged: (value) {
@@ -464,7 +528,12 @@ class _SubscribersPageState extends State<SubscribersPage> {
                                           ),
                                           child: ListTile(
                                             leading: const CircleAvatar(
-                                              child: Icon(Icons.person),
+                                              backgroundColor:
+                                                  Color(0xFFE0F2EF),
+                                              child: Icon(
+                                                Icons.person,
+                                                color: Color(0xFF008B72),
+                                              ),
                                             ),
 
                                             title: Text(
@@ -478,11 +547,9 @@ class _SubscribersPageState extends State<SubscribersPage> {
                                               'الهاتف: ${s['phone'] ?? '-'}\n'
                                               'العنوان: ${s['notes'] ?? '-'}\n'
                                               'الأمبير: $ampere\n'
-                                              'سعر الأمبير: ${pricePerAmpere.toStringAsFixed(0)} د.ع\n'
-                                              'الفاتورة الشهرية: ${monthlyFee.toStringAsFixed(0)} د.ع',
+                                              'سعر الأمبير: ${pricePerAmpere.toStringAsFixed(0)} دينار\n'
+                                              'الفاتورة الشهرية: ${monthlyFee.toStringAsFixed(0)} دينار',
                                             ),
-
-                                            isThreeLine: true,
 
                                             trailing:
                                                 PopupMenuButton<String>(
