@@ -1,4 +1,5 @@
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 
@@ -34,8 +35,17 @@ class LicenseService {
 
   static const int graceDays = 7;
 
+  static const String databaseUrl =
+      'https://mawalidati-4db02-default-rtdb.asia-southeast1.firebasedatabase.app';
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseDatabase _firebase = FirebaseDatabase.instance;
+
+  FirebaseDatabase get _firebase {
+    return FirebaseDatabase.instanceFor(
+      app: Firebase.app(),
+      databaseURL: databaseUrl,
+    );
+  }
 
   // التحقق من رمز التفعيل لأول مرة
   Future<LicenseResult> verifyActivation(String token) async {
@@ -55,8 +65,8 @@ class LicenseService {
         LicenseState.verificationRequired,
         'تعذر التحقق من الرمز: ${e.message ?? e.code}',
       );
-    } catch (e) {
-      return LicenseResult(
+    } catch (_) {
+      return const LicenseResult(
         LicenseState.verificationRequired,
         'تعذر الاتصال بخدمة التفعيل',
       );
@@ -140,6 +150,7 @@ class LicenseService {
       );
     }
 
+    // إذا أوقف المدير الاشتراك
     if (status != 'active') {
       await _saveLocal(
         ownerId: ownerId,
@@ -177,12 +188,13 @@ class LicenseService {
     final finalAllowedDate =
         expiryEnd.add(const Duration(days: graceDays));
 
+    // انتهى الاشتراك وفترة السماح
     if (now.isAfter(finalAllowedDate)) {
       await _saveLocal(
         ownerId: ownerId,
         token: token,
         expiry: expiryText,
-        status: 'expired',
+        status: 'active',
       );
 
       return const LicenseResult(
@@ -191,6 +203,7 @@ class LicenseService {
       );
     }
 
+    // حفظ الترخيص محلياً
     await _saveLocal(
       ownerId: ownerId,
       token: token,
@@ -198,6 +211,7 @@ class LicenseService {
       status: 'active',
     );
 
+    // فترة السماح
     if (now.isAfter(expiryEnd)) {
       return const LicenseResult(
         LicenseState.gracePeriod,
@@ -227,7 +241,7 @@ class LicenseService {
     });
   }
 
-  // السماح بالعمل عند انقطاع الإنترنت
+  // العمل عند انقطاع الإنترنت
   LicenseResult _checkOffline(Map<String, dynamic> saved) {
     final status = saved['status']?.toString() ?? '';
 
