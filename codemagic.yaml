@@ -9,17 +9,20 @@ workflows:
       flutter: stable
 
     scripts:
-      - name: Show Flutter and Dart versions
+      - name: Show Flutter, Dart and Java versions
         script: |
           flutter --version
           dart --version
+          java -version
+          cd android
+          ./gradlew --version
+          cd ..
 
       - name: Get Flutter packages
         script: flutter pub get
 
       - name: Check project
-        script: |
-          flutter analyze --no-fatal-infos --no-fatal-warnings
+        script: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Build Android APK
         script: flutter build apk --release
