@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'screens/subscribers_page.dart';
 import 'screens/generators_page.dart';
@@ -8,8 +9,11 @@ import 'screens/debts_page.dart';
 import 'screens/expenses_page.dart';
 import 'screens/profits_page.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp();
+
   runApp(const MawlidatiApp());
 }
 
@@ -21,14 +25,12 @@ class MawlidatiApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'مولدتي',
-
       builder: (context, child) {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: child ?? const SizedBox(),
         );
       },
-
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
@@ -42,7 +44,6 @@ class MawlidatiApp extends StatelessWidget {
           centerTitle: false,
         ),
       ),
-
       home: const DashboardPage(),
     );
   }
@@ -54,9 +55,7 @@ class DashboardPage extends StatelessWidget {
   void openPage(BuildContext context, Widget page) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => page,
-      ),
+      MaterialPageRoute(builder: (context) => page),
     );
   }
 
@@ -69,7 +68,6 @@ class DashboardPage extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -104,9 +102,7 @@ class DashboardPage extends StatelessWidget {
                 ],
               ),
             ),
-
             const SizedBox(height: 24),
-
             const Text(
               'لوحة التحكم',
               style: TextStyle(
@@ -114,9 +110,7 @@ class DashboardPage extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 14),
-
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -181,9 +175,7 @@ class DashboardPage extends StatelessWidget {
                 ),
               ],
             ),
-
             const SizedBox(height: 24),
-
             const Text(
               'الخدمات',
               style: TextStyle(
@@ -191,9 +183,7 @@ class DashboardPage extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 12),
-
             ServiceTile(
               title: 'إدارة المولدات',
               icon: Icons.electric_bolt,
@@ -202,7 +192,6 @@ class DashboardPage extends StatelessWidget {
                 const GeneratorsPage(),
               ),
             ),
-
             ServiceTile(
               title: 'إدارة المشتركين',
               icon: Icons.people_outline,
@@ -211,7 +200,6 @@ class DashboardPage extends StatelessWidget {
                 const SubscribersPage(),
               ),
             ),
-
             ServiceTile(
               title: 'إدارة الفواتير',
               icon: Icons.receipt_long,
@@ -220,7 +208,6 @@ class DashboardPage extends StatelessWidget {
                 const InvoicesPage(),
               ),
             ),
-
             ServiceTile(
               title: 'إدارة الديون',
               icon: Icons.account_balance_wallet,
@@ -229,7 +216,6 @@ class DashboardPage extends StatelessWidget {
                 const DebtsPage(),
               ),
             ),
-
             ServiceTile(
               title: 'تسجيل المصاريف',
               icon: Icons.money,
@@ -238,7 +224,6 @@ class DashboardPage extends StatelessWidget {
                 const ExpensesPage(),
               ),
             ),
-
             ServiceTile(
               title: 'تقارير الأرباح',
               icon: Icons.bar_chart,
@@ -280,9 +265,7 @@ class DashboardCard extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: Colors.grey.shade200,
-            ),
+            border: Border.all(color: Colors.grey.shade200),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
