@@ -22,7 +22,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -32,6 +32,22 @@ class DatabaseHelper {
           await db.execute(
             'ALTER TABLE generators ADD COLUMN amp_price REAL DEFAULT 0',
           );
+        }
+
+        if (oldVersion < 3) {
+          await db.execute('''
+            CREATE TABLE payments (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              invoice_id INTEGER NOT NULL,
+              amount REAL NOT NULL,
+              date TEXT NOT NULL,
+              notes TEXT,
+              created_at TEXT NOT NULL,
+              FOREIGN KEY (invoice_id)
+                REFERENCES invoices(id)
+                ON DELETE CASCADE
+            )
+          ''');
         }
       },
     );
@@ -90,6 +106,20 @@ class DatabaseHelper {
         notes TEXT,
         date TEXT NOT NULL,
         created_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        date TEXT NOT NULL,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (invoice_id)
+          REFERENCES invoices(id)
+          ON DELETE CASCADE
       )
     ''');
   }
@@ -221,6 +251,51 @@ class DatabaseHelper {
 
     return await db.delete(
       'invoices',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // =========================
+  // الدفعات
+  // =========================
+
+  Future<int> insertPayment(Map<String, dynamic> data) async {
+    final db = await database;
+
+    data['created_at'] ??= DateTime.now().toIso8601String();
+    data['date'] ??= DateTime.now().toIso8601String();
+
+    return await db.insert('payments', data);
+  }
+
+  Future<List<Map<String, dynamic>>> getPayments() async {
+    final db = await database;
+
+    return await db.query(
+      'payments',
+      orderBy: 'id DESC',
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getInvoicePayments(
+    int invoiceId,
+  ) async {
+    final db = await database;
+
+    return await db.query(
+      'payments',
+      where: 'invoice_id = ?',
+      whereArgs: [invoiceId],
+      orderBy: 'id DESC',
+    );
+  }
+
+  Future<int> deletePayment(int id) async {
+    final db = await database;
+
+    return await db.delete(
+      'payments',
       where: 'id = ?',
       whereArgs: [id],
     );
