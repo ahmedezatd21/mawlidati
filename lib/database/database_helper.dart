@@ -22,7 +22,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -131,17 +131,12 @@ class DatabaseHelper {
   Future<int> insertGenerator(Map<String, dynamic> data) async {
     final db = await database;
     data['created_at'] ??= DateTime.now().toIso8601String();
-
-    return await db.insert('generators', data);
+    return db.insert('generators', data);
   }
 
   Future<List<Map<String, dynamic>>> getGenerators() async {
     final db = await database;
-
-    return await db.query(
-      'generators',
-      orderBy: 'id DESC',
-    );
+    return db.query('generators', orderBy: 'id DESC');
   }
 
   Future<int> updateGenerator(
@@ -149,8 +144,7 @@ class DatabaseHelper {
     Map<String, dynamic> data,
   ) async {
     final db = await database;
-
-    return await db.update(
+    return db.update(
       'generators',
       data,
       where: 'id = ?',
@@ -160,8 +154,7 @@ class DatabaseHelper {
 
   Future<int> deleteGenerator(int id) async {
     final db = await database;
-
-    return await db.delete(
+    return db.delete(
       'generators',
       where: 'id = ?',
       whereArgs: [id],
@@ -175,17 +168,12 @@ class DatabaseHelper {
   Future<int> insertSubscriber(Map<String, dynamic> data) async {
     final db = await database;
     data['created_at'] ??= DateTime.now().toIso8601String();
-
-    return await db.insert('subscribers', data);
+    return db.insert('subscribers', data);
   }
 
   Future<List<Map<String, dynamic>>> getSubscribers() async {
     final db = await database;
-
-    return await db.query(
-      'subscribers',
-      orderBy: 'id DESC',
-    );
+    return db.query('subscribers', orderBy: 'id DESC');
   }
 
   Future<int> updateSubscriber(
@@ -193,8 +181,7 @@ class DatabaseHelper {
     Map<String, dynamic> data,
   ) async {
     final db = await database;
-
-    return await db.update(
+    return db.update(
       'subscribers',
       data,
       where: 'id = ?',
@@ -204,8 +191,7 @@ class DatabaseHelper {
 
   Future<int> deleteSubscriber(int id) async {
     final db = await database;
-
-    return await db.delete(
+    return db.delete(
       'subscribers',
       where: 'id = ?',
       whereArgs: [id],
@@ -219,16 +205,16 @@ class DatabaseHelper {
   Future<int> insertInvoice(Map<String, dynamic> data) async {
     final db = await database;
     data['created_at'] ??= DateTime.now().toIso8601String();
-
-    return await db.insert('invoices', data);
+    data['paid_amount'] ??= 0;
+    data['status'] ??= 'غير مدفوع';
+    return db.insert('invoices', data);
   }
 
   Future<List<Map<String, dynamic>>> getInvoices() async {
     final db = await database;
-
-    return await db.query(
+    return db.query(
       'invoices',
-      orderBy: 'id DESC',
+      orderBy: 'year DESC, month DESC, id DESC',
     );
   }
 
@@ -237,8 +223,7 @@ class DatabaseHelper {
     Map<String, dynamic> data,
   ) async {
     final db = await database;
-
-    return await db.update(
+    return db.update(
       'invoices',
       data,
       where: 'id = ?',
@@ -248,42 +233,143 @@ class DatabaseHelper {
 
   Future<int> deleteInvoice(int id) async {
     final db = await database;
-
-    return await db.delete(
+    return db.delete(
       'invoices',
       where: 'id = ?',
       whereArgs: [id],
     );
   }
 
+  // إنشاء الفواتير الشهرية ومنع التكرار
+  Future<int> createMonthlyInvoices({
+    required int month,
+    required int year,
+    int? generatorId,
+  }) async {
+    final db = await database;
+
+    return db.transaction((txn) async {
+      final subscribers = await txn.query(
+        'subscribers',
+        where: generatorId == null
+            ? null
+            : 'generator_id = ?',
+        whereArgs: generatorId == null ? null : [generatorId],
+      );
+
+      int createdCount = 0;
+
+      for (final subscriber in subscribers) {
+        final subscriberId = subscriber['id'] as int;
+        final amount =
+            (subscriber['monthly_fee'] as num?)?.toDouble() ?? 0;
+
+        if (amount <= 0) continue;
+
+        final existing = await txn.query(
+          'invoices',
+          where: 'subscriber_id = ? AND month = ? AND year = ?',
+          whereArgs: [subscriberId, month, year],
+          limit: 1,
+        );
+
+        if (existing.isNotEmpty) continue;
+
+        await txn.insert('invoices', {
+          'subscriber_id': subscriberId,
+          'month': month,
+          'year': year,
+          'amount': amount,
+          'paid_amount': 0,
+          'status': 'غير مدفوع',
+          'created_at': DateTime.now().toIso8601String(),
+        });
+
+        createdCount++;
+      }
+
+      return createdCount;
+    });
+  }
+
   // =========================
   // الدفعات
   // =========================
 
-  Future<int> insertPayment(Map<String, dynamic> data) async {
+  String _invoiceStatus(double amount, double paid) {
+    if (paid <= 0) return 'غير مدفوع';
+    if (paid >= amount) return 'مدفوع';
+    return 'مدفوع جزئياً';
+  }
+
+  // تسجيل دفعة وتحديث الفاتورة تلقائياً
+  Future<int> recordPayment(Map<String, dynamic> data) async {
     final db = await database;
 
-    data['created_at'] ??= DateTime.now().toIso8601String();
-    data['date'] ??= DateTime.now().toIso8601String();
+    return db.transaction((txn) async {
+      final invoiceId = data['invoice_id'] as int;
+      final paymentAmount = (data['amount'] as num).toDouble();
 
-    return await db.insert('payments', data);
+      if (paymentAmount <= 0) {
+        throw Exception('مبلغ الدفعة يجب أن يكون أكبر من صفر');
+      }
+
+      final invoices = await txn.query(
+        'invoices',
+        where: 'id = ?',
+        whereArgs: [invoiceId],
+        limit: 1,
+      );
+
+      if (invoices.isEmpty) {
+        throw Exception('الفاتورة غير موجودة');
+      }
+
+      final invoice = invoices.first;
+      final total = (invoice['amount'] as num).toDouble();
+      final paid = (invoice['paid_amount'] as num?)?.toDouble() ?? 0;
+      final remaining = total - paid;
+
+      if (paymentAmount > remaining + 0.001) {
+        throw Exception('مبلغ الدفعة أكبر من المبلغ المتبقي');
+      }
+
+      final newPaid = paid + paymentAmount;
+
+      data['created_at'] ??= DateTime.now().toIso8601String();
+      data['date'] ??= DateTime.now().toIso8601String();
+
+      final paymentId = await txn.insert('payments', data);
+
+      await txn.update(
+        'invoices',
+        {
+          'paid_amount': newPaid,
+          'status': _invoiceStatus(total, newPaid),
+        },
+        where: 'id = ?',
+        whereArgs: [invoiceId],
+      );
+
+      return paymentId;
+    });
+  }
+
+  // إبقاء الاسم القديم حتى تعمل الصفحات التي تستعمله
+  Future<int> insertPayment(Map<String, dynamic> data) {
+    return recordPayment(data);
   }
 
   Future<List<Map<String, dynamic>>> getPayments() async {
     final db = await database;
-
-    return await db.query(
-      'payments',
-      orderBy: 'id DESC',
-    );
+    return db.query('payments', orderBy: 'id DESC');
   }
 
   Future<List<Map<String, dynamic>>> getInvoicePayments(
     int invoiceId,
   ) async {
     final db = await database;
-
-    return await db.query(
+    return db.query(
       'payments',
       where: 'invoice_id = ?',
       whereArgs: [invoiceId],
@@ -291,14 +377,58 @@ class DatabaseHelper {
     );
   }
 
+  // حذف دفعة وإعادة حساب الفاتورة
   Future<int> deletePayment(int id) async {
     final db = await database;
 
-    return await db.delete(
-      'payments',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return db.transaction((txn) async {
+      final payments = await txn.query(
+        'payments',
+        where: 'id = ?',
+        whereArgs: [id],
+        limit: 1,
+      );
+
+      if (payments.isEmpty) return 0;
+
+      final payment = payments.first;
+      final invoiceId = payment['invoice_id'] as int;
+      final paymentAmount = (payment['amount'] as num).toDouble();
+
+      final result = await txn.delete(
+        'payments',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+
+      final invoices = await txn.query(
+        'invoices',
+        where: 'id = ?',
+        whereArgs: [invoiceId],
+        limit: 1,
+      );
+
+      if (invoices.isNotEmpty) {
+        final invoice = invoices.first;
+        final total = (invoice['amount'] as num).toDouble();
+        final oldPaid =
+            (invoice['paid_amount'] as num?)?.toDouble() ?? 0;
+
+        final newPaid = (oldPaid - paymentAmount).clamp(0.0, total);
+
+        await txn.update(
+          'invoices',
+          {
+            'paid_amount': newPaid,
+            'status': _invoiceStatus(total, newPaid),
+          },
+          where: 'id = ?',
+          whereArgs: [invoiceId],
+        );
+      }
+
+      return result;
+    });
   }
 
   // =========================
@@ -307,20 +437,14 @@ class DatabaseHelper {
 
   Future<int> insertExpense(Map<String, dynamic> data) async {
     final db = await database;
-
     data['created_at'] ??= DateTime.now().toIso8601String();
     data['date'] ??= DateTime.now().toIso8601String();
-
-    return await db.insert('expenses', data);
+    return db.insert('expenses', data);
   }
 
   Future<List<Map<String, dynamic>>> getExpenses() async {
     final db = await database;
-
-    return await db.query(
-      'expenses',
-      orderBy: 'id DESC',
-    );
+    return db.query('expenses', orderBy: 'date DESC, id DESC');
   }
 
   Future<int> updateExpense(
@@ -328,8 +452,7 @@ class DatabaseHelper {
     Map<String, dynamic> data,
   ) async {
     final db = await database;
-
-    return await db.update(
+    return db.update(
       'expenses',
       data,
       where: 'id = ?',
@@ -339,8 +462,7 @@ class DatabaseHelper {
 
   Future<int> deleteExpense(int id) async {
     final db = await database;
-
-    return await db.delete(
+    return db.delete(
       'expenses',
       where: 'id = ?',
       whereArgs: [id],
